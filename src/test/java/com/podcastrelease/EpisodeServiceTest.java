@@ -1,4 +1,4 @@
-package test.java.com.podcastrelease;
+package com.podcastrelease;
 
 import com.podcastrelease.model.Episode;
 import com.podcastrelease.repository.EpisodeRepository;

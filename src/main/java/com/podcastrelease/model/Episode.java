@@ -1,4 +1,4 @@
-package main.java.com.podcastrelease.model;
+package com.podcastrelease.model;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
@@ -52,6 +52,10 @@ public class Episode {
     public void setStatus(EpisodeStatus status) { this.status = status; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
+
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+
     public LocalDateTime getUpdatedAt() { return updatedAt; }
+    
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 }

@@ -1,4 +1,4 @@
-package main.java.com.podcastrelease.controller;
+package com.podcastrelease.controller;
 
 import com.podcastrelease.model.Episode;
 import com.podcastrelease.service.EpisodeService;
