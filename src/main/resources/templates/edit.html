@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Edit Episode - Podcast Episode Release System</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+</head>
+<body class="bg-light">
+    <div class="container mt-5" style="max-width: 650px;">
+        <div class="card shadow-sm">
+            <div class="card-header bg-warning text-dark">
+                <h4 class="mb-0">Edit Episode Metadata (ID: <span th:text="${episode.id}">1</span>)</h4>
+            </div>
+            <div class="card-body p-4">
+                <form th:action="@{/episodes/{id}/edit(id=${episode.id})}" method="post" th:object="${episode}">
+                    <div class="mb-3">
+                        <label for="title" class="form-label">Episode Title *</label>
+                        <input type="text" id="title" name="title" class="form-control" th:value="${episode.title}" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description / Show Notes *</label>
+                        <textarea id="description" name="description" class="form-control" rows="4" th:text="${episode.description}" required></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="audioFileUrl" class="form-label">Audio File URL / Reference</label>
+                        <input type="text" id="audioFileUrl" name="audioFileUrl" class="form-control" th:value="${episode.audioFileUrl}">
+                        <div class="form-text">Required before moving status to PUBLISHED.</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="publishDate" class="form-label">Publish Date *</label>
+                        <input type="date" id="publishDate" name="publishDate" class="form-control" th:value="${episode.publishDate}" required>
+                    </div>
+
+                    <div class="d-flex justify-content-between mt-4">
+                        <a th:href="@{/episodes/{id}(id=${episode.id})}" class="btn btn-outline-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-primary">Update Metadata</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
