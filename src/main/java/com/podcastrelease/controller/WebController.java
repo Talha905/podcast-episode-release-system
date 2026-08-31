@@ -149,4 +149,10 @@ public class WebController {
         }
         return "redirect:/episodes/" + id;
     }
+
+    @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
+    public String handleMaxSizeException(RedirectAttributes redirectAttributes) {
+        redirectAttributes.addFlashAttribute("errorMessage", "Uploaded audio file exceeds maximum allowed limit (100MB). Please choose a smaller file.");
+        return "redirect:/episodes";
+    }
 }
