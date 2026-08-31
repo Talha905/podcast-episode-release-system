@@ -14,7 +14,7 @@
             <div class="card-body p-4">
                 <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
 
-                <form th:action="@{/episodes/create}" method="post" th:object="${episode}">
+                <form th:action="@{/episodes/create}" method="post" enctype="multipart/form-data" th:object="${episode}">
                     <div class="mb-3">
                         <label for="title" class="form-label">Episode Title *</label>
                         <input type="text" id="title" name="title" class="form-control" placeholder="e.g. Episode 4: Scaling DevOps Pipelines" required>
@@ -26,9 +26,15 @@
                     </div>
 
                     <div class="mb-3">
-                        <label for="audioFileUrl" class="form-label">Audio File URL / Reference</label>
+                        <label for="audioFile" class="form-label">Upload Audio File (.mp3, .wav, .m4a, .aac, .ogg)</label>
+                        <input type="file" id="audioFile" name="audioFile" accept=".mp3,.wav,.m4a,.aac,.ogg" class="form-control">
+                        <div class="form-text text-muted">Directly upload audio file from your computer.</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="audioFileUrl" class="form-label">OR External Audio File URL</label>
                         <input type="text" id="audioFileUrl" name="audioFileUrl" class="form-control" placeholder="e.g. https://storage.podcast.com/audio/ep4.mp3">
-                        <div class="form-text">Required before episode can move to PUBLISHED status. Accepted formats: http, https, s3, file, .mp3, .wav, .m4a.</div>
+                        <div class="form-text text-muted">Alternative: enter external URL if file is hosted elsewhere.</div>
                     </div>
 
                     <div class="mb-3">

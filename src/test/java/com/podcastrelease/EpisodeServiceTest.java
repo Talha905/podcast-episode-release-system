@@ -135,4 +135,15 @@ class EpisodeServiceTest {
         assertFalse(logs.isEmpty());
         assertTrue(logs.stream().anyMatch(l -> l.getAction().contains("STATUS_CHANGE")));
     }
+
+    @Test
+    void saveAudioFile_savesUploadedFileAndReturnsPath() {
+        org.springframework.mock.web.MockMultipartFile mockFile = new org.springframework.mock.web.MockMultipartFile(
+                "audioFile", "test_episode.mp3", "audio/mpeg", "dummy audio content".getBytes());
+
+        String savedUrl = episodeService.saveAudioFile(mockFile);
+        assertNotNull(savedUrl);
+        assertTrue(savedUrl.startsWith("/audio/"));
+        assertTrue(savedUrl.endsWith("_test_episode.mp3"));
+    }
 }

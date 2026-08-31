@@ -66,10 +66,15 @@ public class WebController {
     @PostMapping("/episodes/create")
     public String createEpisode(
             @ModelAttribute Episode episode,
+            @RequestParam(value = "audioFile", required = false) org.springframework.web.multipart.MultipartFile audioFile,
             Authentication authentication,
             RedirectAttributes redirectAttributes) {
 
         try {
+            if (audioFile != null && !audioFile.isEmpty()) {
+                String uploadedUrl = episodeService.saveAudioFile(audioFile);
+                episode.setAudioFileUrl(uploadedUrl);
+            }
             String username = authentication != null ? authentication.getName() : null;
             Episode saved = episodeService.create(episode, username);
             redirectAttributes.addFlashAttribute("successMessage", "Episode '" + saved.getTitle() + "' created successfully!");
@@ -110,10 +115,15 @@ public class WebController {
     public String updateEpisode(
             @PathVariable Long id,
             @ModelAttribute Episode updatedEpisode,
+            @RequestParam(value = "audioFile", required = false) org.springframework.web.multipart.MultipartFile audioFile,
             Authentication authentication,
             RedirectAttributes redirectAttributes) {
 
         try {
+            if (audioFile != null && !audioFile.isEmpty()) {
+                String uploadedUrl = episodeService.saveAudioFile(audioFile);
+                updatedEpisode.setAudioFileUrl(uploadedUrl);
+            }
             String username = authentication != null ? authentication.getName() : null;
             episodeService.update(id, updatedEpisode, username);
             redirectAttributes.addFlashAttribute("successMessage", "Episode metadata updated successfully!");

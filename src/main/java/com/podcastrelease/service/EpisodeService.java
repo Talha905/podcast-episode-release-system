@@ -179,6 +179,36 @@ public class EpisodeService {
         return auditLogRepository.findByEpisodeIdOrderByTimestampDesc(episodeId);
     }
 
+    public String saveAudioFile(org.springframework.web.multipart.MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            return null;
+        }
+
+        String originalFilename = org.springframework.util.StringUtils.cleanPath(
+                file.getOriginalFilename() != null ? file.getOriginalFilename() : "audio.mp3");
+
+        String lowerName = originalFilename.toLowerCase();
+        if (!lowerName.endsWith(".mp3") && !lowerName.endsWith(".wav") &&
+            !lowerName.endsWith(".m4a") && !lowerName.endsWith(".aac") && !lowerName.endsWith(".ogg")) {
+            throw new IllegalArgumentException("Unsupported audio file format. Only MP3, WAV, M4A, AAC, and OGG are allowed.");
+        }
+
+        try {
+            java.io.File uploadDir = new java.io.File("uploads/audio");
+            if (!uploadDir.exists()) {
+                uploadDir.mkdirs();
+            }
+
+            String uniqueFilename = java.util.UUID.randomUUID().toString() + "_" + originalFilename;
+            java.io.File destFile = new java.io.File(uploadDir, uniqueFilename);
+            file.transferTo(destFile);
+
+            return "/audio/" + uniqueFilename;
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to save uploaded audio file: " + e.getMessage(), e);
+        }
+    }
+
     private void createAuditLog(Long episodeId, String action, User user) {
         AuditLog log = new AuditLog(episodeId, action, user);
         auditLogRepository.save(log);

@@ -12,7 +12,7 @@
                 <h4 class="mb-0">Edit Episode Metadata (ID: <span th:text="${episode.id}">1</span>)</h4>
             </div>
             <div class="card-body p-4">
-                <form th:action="@{/episodes/{id}/edit(id=${episode.id})}" method="post" th:object="${episode}">
+                <form th:action="@{/episodes/{id}/edit(id=${episode.id})}" method="post" enctype="multipart/form-data" th:object="${episode}">
                     <div class="mb-3">
                         <label for="title" class="form-label">Episode Title *</label>
                         <input type="text" id="title" name="title" class="form-control" th:value="${episode.title}" required>
@@ -24,9 +24,14 @@
                     </div>
 
                     <div class="mb-3">
-                        <label for="audioFileUrl" class="form-label">Audio File URL / Reference</label>
+                        <label for="audioFile" class="form-label">Upload New Audio File (.mp3, .wav, .m4a, .aac, .ogg)</label>
+                        <input type="file" id="audioFile" name="audioFile" accept=".mp3,.wav,.m4a,.aac,.ogg" class="form-control">
+                        <div class="form-text text-muted">Upload a new audio file to replace the current reference.</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="audioFileUrl" class="form-label">Current / External Audio File URL</label>
                         <input type="text" id="audioFileUrl" name="audioFileUrl" class="form-control" th:value="${episode.audioFileUrl}">
-                        <div class="form-text">Required before moving status to PUBLISHED.</div>
                     </div>
 
                     <div class="mb-3">
