@@ -12,6 +12,8 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import org.springframework.security.crypto.password.PasswordEncoder;
+
 import java.time.LocalDate;
 import java.util.List;
 
@@ -20,15 +22,47 @@ public class WebController {
 
     private final EpisodeService episodeService;
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
-    public WebController(EpisodeService episodeService, UserRepository userRepository) {
+    public WebController(EpisodeService episodeService, UserRepository userRepository, PasswordEncoder passwordEncoder) {
         this.episodeService = episodeService;
         this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @GetMapping("/login")
     public String loginPage() {
         return "login";
+    }
+
+    @GetMapping("/signup")
+    public String signupPage(Model model) {
+        model.addAttribute("roles", com.podcastrelease.model.UserRole.values());
+        return "signup";
+    }
+
+    @PostMapping("/signup")
+    public String registerUser(
+            @RequestParam String username,
+            @RequestParam String password,
+            @RequestParam(defaultValue = "PRODUCER") com.podcastrelease.model.UserRole role,
+            RedirectAttributes redirectAttributes) {
+
+        if (username == null || username.trim().isEmpty() || password == null || password.trim().isEmpty()) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Username and password are required.");
+            return "redirect:/signup";
+        }
+
+        if (userRepository.existsByUsername(username.trim())) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Username '" + username.trim() + "' is already taken. Please choose another.");
+            return "redirect:/signup";
+        }
+
+        User user = new User(username.trim(), passwordEncoder.encode(password), role);
+        userRepository.save(user);
+
+        redirectAttributes.addFlashAttribute("successMessage", "Account created successfully for '" + username.trim() + "'! Please sign in below.");
+        return "redirect:/login";
     }
 
     @GetMapping({"/", "/episodes", "/dashboard"})

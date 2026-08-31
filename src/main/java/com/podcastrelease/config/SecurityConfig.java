@@ -52,7 +52,7 @@ public class SecurityConfig {
                 .frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin)
             )
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/login", "/css/**", "/js/**", "/h2-console/**", "/api/auth/login").permitAll()
+                .requestMatchers("/login", "/signup", "/css/**", "/js/**", "/h2-console/**", "/api/auth/login", "/api/auth/register").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/episodes").hasAnyRole("PRODUCER", "ADMIN")
                 .requestMatchers(HttpMethod.PUT, "/api/episodes/**").hasAnyRole("PRODUCER", "ADMIN")
                 .requestMatchers(HttpMethod.PATCH, "/api/episodes/*/status").hasAnyRole("PRODUCER", "HOST", "ADMIN")
