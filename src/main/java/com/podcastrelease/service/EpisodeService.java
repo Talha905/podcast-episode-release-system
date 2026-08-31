@@ -142,6 +142,7 @@ public class EpisodeService {
                                         lowerUrl.startsWith("https://") ||
                                         lowerUrl.startsWith("s3://") ||
                                         lowerUrl.startsWith("file://") ||
+                                        lowerUrl.startsWith("/") ||
                                         lowerUrl.endsWith(".mp3") ||
                                         lowerUrl.endsWith(".wav") ||
                                         lowerUrl.endsWith(".m4a") ||

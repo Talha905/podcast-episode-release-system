@@ -53,6 +53,14 @@
                     <div class="p-3 bg-light border rounded" th:text="${episode.description}">Show notes text...</div>
                 </div>
 
+                <div class="mb-4" th:if="${episode.audioFileUrl != null && !episode.audioFileUrl.empty}">
+                    <h5>Audio Preview:</h5>
+                    <audio controls class="w-100 mt-2">
+                        <source th:src="${episode.audioFileUrl}">
+                        Your browser does not support the audio element.
+                    </audio>
+                </div>
+
                 <!-- Workflow Status Transitions -->
                 <div class="border-top pt-3">
                     <h5>Status Workflow Actions</h5>
