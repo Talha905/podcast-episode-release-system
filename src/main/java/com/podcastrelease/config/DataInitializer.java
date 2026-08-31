@@ -1,9 +1,11 @@
 package com.podcastrelease.config;
 
+import com.podcastrelease.model.AuditLog;
 import com.podcastrelease.model.Episode;
 import com.podcastrelease.model.EpisodeStatus;
 import com.podcastrelease.model.User;
 import com.podcastrelease.model.UserRole;
+import com.podcastrelease.repository.AuditLogRepository;
 import com.podcastrelease.repository.EpisodeRepository;
 import com.podcastrelease.repository.UserRepository;
 import org.springframework.boot.CommandLineRunner;
@@ -16,6 +18,9 @@ import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.AudioSystem;
 import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.LocalDate;
 
 @Component
@@ -23,11 +28,16 @@ public class DataInitializer implements CommandLineRunner {
 
     private final UserRepository userRepository;
     private final EpisodeRepository episodeRepository;
+    private final AuditLogRepository auditLogRepository;
     private final PasswordEncoder passwordEncoder;
 
-    public DataInitializer(UserRepository userRepository, EpisodeRepository episodeRepository, PasswordEncoder passwordEncoder) {
+    public DataInitializer(UserRepository userRepository,
+                           EpisodeRepository episodeRepository,
+                           AuditLogRepository auditLogRepository,
+                           PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.episodeRepository = episodeRepository;
+        this.auditLogRepository = auditLogRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -41,53 +51,144 @@ public class DataInitializer implements CommandLineRunner {
             User admin = userRepository.save(new User("admin", passwordEncoder.encode("password123"), UserRole.ADMIN));
 
             if (episodeRepository.count() == 0) {
-                Episode ep1 = new Episode("Episode 1: Tech Trends 2026", "Discussion on emerging AI tech trends.", "/audio/ep1.mp3", LocalDate.now().plusDays(2));
+                // Episode 101 - Published
+                Episode ep1 = new Episode(
+                        "Ep 101: The Future of Generative AI in Production",
+                        "In this episode, we sit down with leading AI engineers to discuss multi-agent architectures, LLM orchestration, and low-latency inference strategies for high-throughput enterprise systems.",
+                        "/audio/ep1.mp3",
+                        LocalDate.now().minusDays(10)
+                );
                 ep1.setCreatedBy(producer);
-                ep1.setStatus(EpisodeStatus.DRAFT);
-                episodeRepository.save(ep1);
+                ep1.setStatus(EpisodeStatus.PUBLISHED);
+                ep1 = episodeRepository.save(ep1);
+                auditLogRepository.save(new AuditLog(ep1.getId(), "CREATE_EPISODE (Status: DRAFT)", producer));
+                auditLogRepository.save(new AuditLog(ep1.getId(), "STATUS_CHANGE: DRAFT -> VALIDATED", producer));
+                auditLogRepository.save(new AuditLog(ep1.getId(), "STATUS_CHANGE: VALIDATED -> PUBLISHED", host));
 
-                Episode ep2 = new Episode("Episode 2: Deep Dive into DevOps", "An in-depth look into Jenkins CI/CD automation.", "/audio/ep2.mp3", LocalDate.now().plusDays(5));
+                // Episode 102 - Published
+                Episode ep2 = new Episode(
+                        "Ep 102: Zero Trust Security in Cloud Native Environments",
+                        "Exploring identity-aware proxies, mutual TLS, fine-grained RBAC authorization policies, and automated secret rotation across production Kubernetes clusters.",
+                        "/audio/ep2.mp3",
+                        LocalDate.now().minusDays(5)
+                );
                 ep2.setCreatedBy(producer);
-                ep2.setStatus(EpisodeStatus.VALIDATED);
-                episodeRepository.save(ep2);
+                ep2.setStatus(EpisodeStatus.PUBLISHED);
+                ep2 = episodeRepository.save(ep2);
+                auditLogRepository.save(new AuditLog(ep2.getId(), "CREATE_EPISODE (Status: DRAFT)", producer));
+                auditLogRepository.save(new AuditLog(ep2.getId(), "STATUS_CHANGE: DRAFT -> VALIDATED", producer));
+                auditLogRepository.save(new AuditLog(ep2.getId(), "STATUS_CHANGE: VALIDATED -> PUBLISHED", admin));
 
-                Episode ep3 = new Episode("Episode 3: Cloud Infrastructure Best Practices", "Exploring containerization and Kubernetes orchestration.", "/audio/ep3.mp3", LocalDate.now().minusDays(3));
+                // Episode 103 - Published
+                Episode ep3 = new Episode(
+                        "Ep 103: Building Autonomous CI/CD Pipelines with Jenkins",
+                        "A step-by-step masterclass on parameterizing Jenkins pipelines, containerizing Spring Boot microservices, running Selenium WebDriver test gates, and automating rollback triggers.",
+                        "/audio/ep3.mp3",
+                        LocalDate.now().minusDays(2)
+                );
                 ep3.setCreatedBy(producer);
                 ep3.setStatus(EpisodeStatus.PUBLISHED);
-                episodeRepository.save(ep3);
+                ep3 = episodeRepository.save(ep3);
+                auditLogRepository.save(new AuditLog(ep3.getId(), "CREATE_EPISODE (Status: DRAFT)", producer));
+                auditLogRepository.save(new AuditLog(ep3.getId(), "STATUS_CHANGE: DRAFT -> VALIDATED", producer));
+                auditLogRepository.save(new AuditLog(ep3.getId(), "STATUS_CHANGE: VALIDATED -> PUBLISHED", producer));
+
+                // Episode 104 - Validated
+                Episode ep4 = new Episode(
+                        "Ep 104: Scaling Distributed Databases under High Concurrency",
+                        "Lessons learned from managing global database clusters during peak traffic spikes, setting up read replicas, connection pooling, and sharding strategies.",
+                        "/audio/ep4.mp3",
+                        LocalDate.now().plusDays(3)
+                );
+                ep4.setCreatedBy(producer);
+                ep4.setStatus(EpisodeStatus.VALIDATED);
+                ep4 = episodeRepository.save(ep4);
+                auditLogRepository.save(new AuditLog(ep4.getId(), "CREATE_EPISODE (Status: DRAFT)", producer));
+                auditLogRepository.save(new AuditLog(ep4.getId(), "STATUS_CHANGE: DRAFT -> VALIDATED", producer));
+
+                // Episode 105 - Validated
+                Episode ep5 = new Episode(
+                        "Ep 105: Designing Accessible Design Systems for Enterprise Apps",
+                        "How design tokens, accessible ARIA components, and strict UI design guidelines speed up product development across cross-functional frontend teams.",
+                        "/audio/ep5.mp3",
+                        LocalDate.now().plusDays(7)
+                );
+                ep5.setCreatedBy(producer);
+                ep5.setStatus(EpisodeStatus.VALIDATED);
+                ep5 = episodeRepository.save(ep5);
+                auditLogRepository.save(new AuditLog(ep5.getId(), "CREATE_EPISODE (Status: DRAFT)", producer));
+                auditLogRepository.save(new AuditLog(ep5.getId(), "STATUS_CHANGE: DRAFT -> VALIDATED", producer));
+
+                // Episode 106 - Draft
+                Episode ep6 = new Episode(
+                        "Ep 106: Microservices vs. Modular Monoliths in 2026",
+                        "Deconstructing software architecture trends: when to split services, network latency overheads, and when a modular monolith is the superior operational choice.",
+                        "/audio/ep6.mp3",
+                        LocalDate.now().plusDays(12)
+                );
+                ep6.setCreatedBy(producer);
+                ep6.setStatus(EpisodeStatus.DRAFT);
+                ep6 = episodeRepository.save(ep6);
+                auditLogRepository.save(new AuditLog(ep6.getId(), "CREATE_EPISODE (Status: DRAFT)", producer));
+
+                // Episode 107 - Draft
+                Episode ep7 = new Episode(
+                        "Ep 107: Automated Infrastructure Provisioning with Ansible & Puppet",
+                        "Configuring multi-node server clusters idempotently using Ansible playbooks, Puppet manifests, and infrastructure-as-code principles.",
+                        "/audio/ep7.mp3",
+                        LocalDate.now().plusDays(15)
+                );
+                ep7.setCreatedBy(producer);
+                ep7.setStatus(EpisodeStatus.DRAFT);
+                ep7 = episodeRepository.save(ep7);
+                auditLogRepository.save(new AuditLog(ep7.getId(), "CREATE_EPISODE (Status: DRAFT)", producer));
+
+                // Episode 108 - Failed
+                Episode ep8 = new Episode(
+                        "Ep 108: Post-Mortem: Overcoming Corrupted Metadata Release Pipelines",
+                        "A deep-dive technical post-mortem into how automated pre-release validation caught malformed audio assets and prevented a broken release from going live.",
+                        "/audio/ep8.mp3",
+                        LocalDate.now().minusDays(1)
+                );
+                ep8.setCreatedBy(producer);
+                ep8.setStatus(EpisodeStatus.FAILED);
+                ep8 = episodeRepository.save(ep8);
+                auditLogRepository.save(new AuditLog(ep8.getId(), "CREATE_EPISODE (Status: DRAFT)", producer));
+                auditLogRepository.save(new AuditLog(ep8.getId(), "STATUS_CHANGE: DRAFT -> VALIDATED", producer));
+                auditLogRepository.save(new AuditLog(ep8.getId(), "STATUS_CHANGE: VALIDATED -> FAILED (Validation Error)", admin));
             }
         }
     }
 
     private void ensureSampleAudioFilesExist() {
-        File audioDir = new File("src/main/resources/static/audio");
-        if (!audioDir.exists()) {
-            audioDir.mkdirs();
-        }
-        File targetDir = new File("target/classes/static/audio");
-        if (!targetDir.exists()) {
-            targetDir.mkdirs();
-        }
+        Path audioDir = Paths.get("src/main/resources/static/audio").toAbsolutePath().normalize();
+        Path targetDir = Paths.get("target/classes/static/audio").toAbsolutePath().normalize();
+        Path uploadDir = Paths.get("uploads/audio").toAbsolutePath().normalize();
 
-        String[] sampleFiles = new String[]{"ep1.mp3", "ep2.mp3", "ep3.mp3"};
-        for (int i = 0; i < sampleFiles.length; i++) {
-            String fileName = sampleFiles[i];
-            File file1 = new File(audioDir, fileName);
-            File file2 = new File(targetDir, fileName);
-            double frequency = 300.0 + (i * 150.0);
-            if (!file1.exists()) {
-                generateToneAudioFile(file1, frequency);
+        try {
+            Files.createDirectories(audioDir);
+            Files.createDirectories(targetDir);
+            Files.createDirectories(uploadDir);
+
+            String[] sampleFiles = new String[]{"ep1.mp3", "ep2.mp3", "ep3.mp3", "ep4.mp3", "ep5.mp3", "ep6.mp3", "ep7.mp3", "ep8.mp3"};
+            for (int i = 0; i < sampleFiles.length; i++) {
+                String fileName = sampleFiles[i];
+                File file1 = new File(audioDir.toFile(), fileName);
+                File file2 = new File(targetDir.toFile(), fileName);
+                File file3 = new File(uploadDir.toFile(), fileName);
+
+                double frequency = 261.63 + (i * 40.0); // C4 scale progression
+                if (!file1.exists()) generateToneAudioFile(file1, frequency);
+                if (!file2.exists()) generateToneAudioFile(file2, frequency);
+                if (!file3.exists()) generateToneAudioFile(file3, frequency);
             }
-            if (!file2.exists()) {
-                generateToneAudioFile(file2, frequency);
-            }
-        }
+        } catch (Exception ignored) {}
     }
 
     private void generateToneAudioFile(File file, double frequency) {
         try {
             AudioFormat format = new AudioFormat(44100, 16, 1, true, false);
-            int durationSeconds = 3;
+            int durationSeconds = 4;
             byte[] pcm = new byte[44100 * 2 * durationSeconds];
             for (int i = 0; i < pcm.length / 2; i++) {
                 double angle = 2.0 * Math.PI * frequency * i / 44100.0;
