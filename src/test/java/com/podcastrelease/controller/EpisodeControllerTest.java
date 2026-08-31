@@ -77,11 +77,10 @@ class EpisodeControllerTest {
     }
 
     @Test
-    @WithMockUser(username = "host", roles = {"HOST"})
-    void getDashboardSummary_returnsCounts() throws Exception {
-        mockMvc.perform(get("/api/dashboard/summary"))
+    @WithMockUser(username = "producer", roles = {"PRODUCER"})
+    void getDashboardView_returns200() throws Exception {
+        mockMvc.perform(get("/"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.TOTAL").exists())
-                .andExpect(jsonPath("$.DRAFT").exists());
+                .andExpect(view().name("episodes"));
     }
 }
