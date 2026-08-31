@@ -194,14 +194,13 @@ public class EpisodeService {
         }
 
         try {
-            java.io.File uploadDir = new java.io.File("uploads/audio");
-            if (!uploadDir.exists()) {
-                uploadDir.mkdirs();
-            }
+            java.nio.file.Path uploadPath = java.nio.file.Paths.get("uploads/audio").toAbsolutePath().normalize();
+            java.nio.file.Files.createDirectories(uploadPath);
 
             String uniqueFilename = java.util.UUID.randomUUID().toString() + "_" + originalFilename;
-            java.io.File destFile = new java.io.File(uploadDir, uniqueFilename);
-            file.transferTo(destFile);
+            java.nio.file.Path targetPath = uploadPath.resolve(uniqueFilename);
+
+            java.nio.file.Files.copy(file.getInputStream(), targetPath, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
 
             return "/audio/" + uniqueFilename;
         } catch (Exception e) {
