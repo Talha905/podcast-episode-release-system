@@ -30,7 +30,7 @@ mvn clean test
 
 Expected output:
 ```text
-[INFO] Tests run: 16, Failures: 0, Errors: 0, Skipped: 0
+[INFO] Tests run: 17, Failures: 0, Errors: 0, Skipped: 0
 [INFO] BUILD SUCCESS
 ```
 
@@ -44,7 +44,7 @@ To start the Spring Boot application locally:
 mvn spring-boot:run
 ```
 
-By default, the application runs on **port 8080** using the `dev` profile with an in-memory **H2 database**.
+By default, the application runs on **port 8083** (configured in `application.properties` to avoid conflict with Jenkins on port 8080) using the `dev` profile with an in-memory **H2 database**.
 
 ---
 
@@ -52,7 +52,8 @@ By default, the application runs on **port 8080** using the `dev` profile with a
 
 ### Web UI
 Open your browser and navigate to:
-- **[http://localhost:8080](http://localhost:8080)** or **[http://localhost:8080/login](http://localhost:8080/login)**
+- **[http://localhost:8083](http://localhost:8083)** or **[http://localhost:8083/login](http://localhost:8083/login)**
+- **Sign-Up Page**: **[http://localhost:8083/signup](http://localhost:8083/signup)**
 
 ### Pre-Seeded User Accounts
 
@@ -60,9 +61,11 @@ The application automatically seeds three demo user accounts on startup:
 
 | Role | Username | Password | Permissions & Actions |
 |---|---|---|---|
-| **Producer** | `producer` | `password123` | Create episodes, update metadata (DRAFT/VALIDATED only), transition status (`DRAFT` → `VALIDATED` → `PUBLISHED`/`FAILED`) |
+| **Producer** | `producer` | `password123` | Create episodes, upload audio, update metadata (DRAFT/VALIDATED only), transition status (`DRAFT` → `VALIDATED` → `PUBLISHED`/`FAILED`) |
 | **Host** | `host` | `password123` | View episodes, view dashboard summary metrics, override episode status |
 | **Admin** | `admin` | `password123` | Full access: Create, edit, view audit logs, override status |
+
+*(You can also register new user accounts with any role via the `/signup` page).*
 
 ---
 
@@ -70,7 +73,7 @@ The application automatically seeds three demo user accounts on startup:
 
 ### H2 Database Console
 To view database tables (`episodes`, `users`, `audit_logs`), open:
-- **URL**: [http://localhost:8080/h2-console](http://localhost:8080/h2-console)
+- **URL**: [http://localhost:8083/h2-console](http://localhost:8083/h2-console)
 - **JDBC URL**: `jdbc:h2:mem:podcastdb`
 - **User Name**: `sa`
 - **Password**: *(leave blank)*
@@ -83,7 +86,9 @@ All REST API endpoints support **HTTP Basic Authentication** as well as session 
 
 | Method | Endpoint | Description | Role Required |
 |---|---|---|---|
+| `POST` | `/api/auth/register` | Register a new user account | Public |
 | `POST` | `/api/auth/login` | Authenticate & get current user details | Public |
+| `GET` | `/api/auth/me` | Get currently logged-in user info | Authenticated |
 | `GET` | `/api/episodes` | List all episodes (Supports query params: `?title=...&status=...&from=...&to=...`) | `PRODUCER`, `HOST`, `ADMIN` |
 | `POST` | `/api/episodes` | Create new episode | `PRODUCER`, `ADMIN` |
 | `GET` | `/api/episodes/{id}` | View single episode details | `PRODUCER`, `HOST`, `ADMIN` |
