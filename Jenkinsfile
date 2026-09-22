@@ -43,26 +43,22 @@ pipeline {
 
         stage('Deploy to Tomcat') {
             steps {
-                echo "Deploying target/podcast-release.war to Tomcat webapps directory: ${params.TOMCAT_WEBAPPS_DIR}..."
                 script {
+                    def tomcatDir = (params.TOMCAT_WEBAPPS_DIR && params.TOMCAT_WEBAPPS_DIR.trim()) ? params.TOMCAT_WEBAPPS_DIR.trim() : 'C:\\Program Files\\Apache Software Foundation\\Tomcat 10.1\\webapps'
+                    echo "Deploying target/podcast-release.war to Tomcat directory: ${tomcatDir}"
+                    
                     if (isUnix()) {
-                        sh '''
-                            if [ -d "${TOMCAT_WEBAPPS_DIR}" ]; then
-                                cp target/podcast-release.war "${TOMCAT_WEBAPPS_DIR}/"
-                                echo "Successfully deployed podcast-release.war to ${TOMCAT_WEBAPPS_DIR}"
-                            else
-                                echo "Tomcat directory ${TOMCAT_WEBAPPS_DIR} not found. Artifact target/podcast-release.war staged."
-                            fi
-                        '''
+                        sh """
+                            mkdir -p "${tomcatDir}"
+                            cp target/podcast-release.war "${tomcatDir}/"
+                            echo "Successfully copied podcast-release.war to ${tomcatDir}"
+                        """
                     } else {
-                        bat '''
-                            IF EXIST "%TOMCAT_WEBAPPS_DIR%" (
-                                copy /Y "target\\podcast-release.war" "%TOMCAT_WEBAPPS_DIR%\\podcast-release.war"
-                                echo Successfully deployed podcast-release.war to %TOMCAT_WEBAPPS_DIR%
-                            ) ELSE (
-                                echo Tomcat webapps directory %TOMCAT_WEBAPPS_DIR% not found. WAR artifact staged at target\\podcast-release.war for Tomcat deployment.
-                            )
-                        '''
+                        bat """
+                            IF NOT EXIST "${tomcatDir}" mkdir "${tomcatDir}"
+                            copy /Y "target\\podcast-release.war" "${tomcatDir}\\podcast-release.war"
+                            echo Successfully copied podcast-release.war to ${tomcatDir}
+                        """
                     }
                 }
             }
