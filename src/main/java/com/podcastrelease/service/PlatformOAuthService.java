@@ -16,6 +16,9 @@ public class PlatformOAuthService {
     @Value("${app.oauth.youtube.client-id:demo_youtube_client_id}")
     private String youtubeClientId;
 
+    @Value("${app.oauth.youtube.client-secret:demo_youtube_client_secret}")
+    private String youtubeClientSecret;
+
     public PlatformOAuthService(PlatformAccountRepository platformAccountRepository) {
         this.platformAccountRepository = platformAccountRepository;
     }
