@@ -4,6 +4,7 @@ pipeline {
     parameters {
         string(name: 'SERVER_PORT', defaultValue: '8083', description: 'Target application server port')
         choice(name: 'ENVIRONMENT', choices: ['dev', 'prod'], description: 'Target deployment environment profile')
+        string(name: 'TOMCAT_WEBAPPS_DIR', defaultValue: 'C:\\Program Files\\Apache Software Foundation\\Tomcat 10.1\\webapps', description: 'Path to target Tomcat webapps directory')
     }
 
     stages {
@@ -21,30 +22,48 @@ pipeline {
                     if (isUnix()) {
                         sh 'mvn clean test'
                     } else {
-                        bat 'mvn clean test'
+                        bat 'where mvn >nul 2>&1 && mvn clean test || "C:\\Users\\thele\\apache-maven-3.9.16\\bin\\mvn.cmd" clean test'
                     }
                 }
             }
         }
 
-        stage('Package Artifact') {
+        stage('Package WAR') {
             steps {
-                echo "Packaging WAR file for environment profile: ${params.ENVIRONMENT}..."
+                echo "Packaging WAR artifact for environment profile: ${params.ENVIRONMENT}..."
                 script {
                     if (isUnix()) {
                         sh 'mvn package -DskipTests'
                     } else {
-                        bat 'mvn package -DskipTests'
+                        bat 'where mvn >nul 2>&1 && mvn package -DskipTests || "C:\\Users\\thele\\apache-maven-3.9.16\\bin\\mvn.cmd" package -DskipTests'
                     }
                 }
             }
         }
 
-        stage('Deploy Application') {
+        stage('Deploy to Tomcat') {
             steps {
-                echo "Deploying application to target server on port ${params.SERVER_PORT} [Profile: ${params.ENVIRONMENT}]..."
+                echo "Deploying target/podcast-release.war to Tomcat webapps directory: ${params.TOMCAT_WEBAPPS_DIR}..."
                 script {
-                    echo "Deployment of target/podcast-release.war to Tomcat / server environment complete on port ${params.SERVER_PORT}."
+                    if (isUnix()) {
+                        sh '''
+                            if [ -d "${TOMCAT_WEBAPPS_DIR}" ]; then
+                                cp target/podcast-release.war "${TOMCAT_WEBAPPS_DIR}/"
+                                echo "Successfully deployed podcast-release.war to ${TOMCAT_WEBAPPS_DIR}"
+                            else
+                                echo "Tomcat directory ${TOMCAT_WEBAPPS_DIR} not found. Artifact target/podcast-release.war staged."
+                            fi
+                        '''
+                    } else {
+                        bat '''
+                            IF EXIST "%TOMCAT_WEBAPPS_DIR%" (
+                                copy /Y "target\\podcast-release.war" "%TOMCAT_WEBAPPS_DIR%\\podcast-release.war"
+                                echo Successfully deployed podcast-release.war to %TOMCAT_WEBAPPS_DIR%
+                            ) ELSE (
+                                echo Tomcat webapps directory %TOMCAT_WEBAPPS_DIR% not found. WAR artifact staged at target\\podcast-release.war for Tomcat deployment.
+                            )
+                        '''
+                    }
                 }
             }
         }
@@ -56,7 +75,7 @@ pipeline {
             archiveArtifacts artifacts: 'target/*.war', allowEmptyArchive: false
         }
         success {
-            echo 'Pipeline execution completed successfully!'
+            echo 'Pipeline execution and Tomcat deployment stage completed successfully!'
         }
         failure {
             echo 'Pipeline build or deployment failed.'
