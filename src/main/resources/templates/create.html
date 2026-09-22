@@ -52,6 +52,14 @@
                         <textarea id="description" name="description" class="form-control" rows="4" placeholder="Enter episode show notes and discussion summary..." required></textarea>
                     </div>
 
+                    <div class="mb-3">
+                        <label for="podcastShowId" class="form-label fw-semibold">Podcast Show / Channel</label>
+                        <select id="podcastShowId" name="podcastShowId" class="form-select">
+                            <option value="">-- Select Podcast Show (Optional) --</option>
+                            <option th:each="show : ${shows}" th:value="${show.id}" th:text="${show.name}"></option>
+                        </select>
+                    </div>
+
                     <div class="mb-3 p-3 bg-light rounded-3 border">
                         <label for="audioFile" class="form-label fw-semibold text-primary"><i class="bi bi-cloud-upload me-1"></i> Upload Audio File (.mp3, .wav, .m4a, .aac, .ogg)</label>
                         <input type="file" id="audioFile" name="audioFile" accept=".mp3,.wav,.m4a,.aac,.ogg" class="form-control">

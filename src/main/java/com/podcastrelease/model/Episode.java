@@ -36,6 +36,14 @@ public class Episode {
     @JoinColumn(name = "created_by")
     private User createdBy;
 
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "podcast_show_id")
+    private PodcastShow podcastShow;
+
+    private Integer durationSeconds;
+    private String formattedDuration;
+    private Long fileSizeBytes;
+
     private LocalDateTime createdAt = LocalDateTime.now();
     private LocalDateTime updatedAt = LocalDateTime.now();
 
@@ -71,6 +79,18 @@ public class Episode {
 
     public User getCreatedBy() { return createdBy; }
     public void setCreatedBy(User createdBy) { this.createdBy = createdBy; }
+
+    public PodcastShow getPodcastShow() { return podcastShow; }
+    public void setPodcastShow(PodcastShow podcastShow) { this.podcastShow = podcastShow; }
+
+    public Integer getDurationSeconds() { return durationSeconds; }
+    public void setDurationSeconds(Integer durationSeconds) { this.durationSeconds = durationSeconds; }
+
+    public String getFormattedDuration() { return formattedDuration; }
+    public void setFormattedDuration(String formattedDuration) { this.formattedDuration = formattedDuration; }
+
+    public Long getFileSizeBytes() { return fileSizeBytes; }
+    public void setFileSizeBytes(Long fileSizeBytes) { this.fileSizeBytes = fileSizeBytes; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

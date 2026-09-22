@@ -13,6 +13,10 @@ public interface EpisodeRepository extends JpaRepository<Episode, Long>, JpaSpec
 
     long countByStatus(EpisodeStatus status);
 
+    List<Episode> findByStatus(EpisodeStatus status);
+
+    List<Episode> findByPodcastShowIdAndStatus(Long podcastShowId, EpisodeStatus status);
+
     @Query("SELECT e FROM Episode e WHERE " +
            "(:title IS NULL OR LOWER(e.title) LIKE LOWER(CONCAT('%', :title, '%'))) AND " +
            "(:status IS NULL OR e.status = :status) AND " +

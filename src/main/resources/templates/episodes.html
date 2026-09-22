@@ -66,7 +66,16 @@
                 <span class="fs-4"><i class="bi bi-mic-fill text-primary"></i></span>
                 <span>Podcast Release System</span>
             </a>
-            <div class="d-flex align-items-center text-white gap-3">
+            <div class="d-flex align-items-center text-white gap-2">
+                <a href="/shows" class="btn btn-outline-light btn-sm rounded-pill px-3 me-1">
+                    <i class="bi bi-broadcast-pin me-1"></i> Shows
+                </a>
+                <a href="/platforms" class="btn btn-outline-light btn-sm rounded-pill px-3 me-1">
+                    <i class="bi bi-share me-1"></i> Integrations
+                </a>
+                <a href="/feed.xml" target="_blank" class="btn btn-outline-warning btn-sm rounded-pill px-3 me-2">
+                    <i class="bi bi-rss-fill me-1"></i> RSS Feed
+                </a>
                 <div class="d-flex align-items-center gap-2 bg-slate-800 px-3 py-1.5 rounded-pill bg-opacity-50 border border-secondary border-opacity-25" th:if="${currentUser}">
                     <i class="bi bi-person-circle text-primary"></i>
                     <span class="small fw-semibold" th:text="${currentUser.username}">user</span>
@@ -188,6 +197,7 @@
                         <tr>
                             <th class="ps-4">ID</th>
                             <th>Episode Details</th>
+                            <th>Podcast Show</th>
                             <th>Publish Date</th>
                             <th>Release Status</th>
                             <th>Audio File</th>
@@ -200,6 +210,14 @@
                             <td>
                                 <div class="fw-bold text-dark fs-6" th:text="${ep.title}">Title</div>
                                 <div class="text-muted small text-truncate" style="max-width: 320px;" th:text="${ep.description}">Description</div>
+                            </td>
+                            <td>
+                                <span th:if="${ep.podcastShow != null}" class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2.5 py-1">
+                                    <i class="bi bi-broadcast me-1"></i><span th:text="${ep.podcastShow.name}">Show</span>
+                                </span>
+                                <span th:if="${ep.podcastShow == null}" class="text-muted small">
+                                    <em>Unassigned</em>
+                                </span>
                             </td>
                             <td>
                                 <div class="fw-semibold" th:text="${ep.publishDate}">2026-08-30</div>
@@ -229,7 +247,7 @@
                             </td>
                         </tr>
                         <tr th:if="${#lists.isEmpty(episodes)}">
-                            <td colspan="6" class="text-center text-muted py-5">
+                            <td colspan="7" class="text-center text-muted py-5">
                                 <i class="bi bi-search fs-1 d-block text-slate-400 mb-2"></i>
                                 No podcast episodes found matching your filter criteria.
                             </td>

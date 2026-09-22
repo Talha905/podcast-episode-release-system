@@ -23,11 +23,16 @@ public class WebController {
     private final EpisodeService episodeService;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final com.podcastrelease.repository.PodcastShowRepository podcastShowRepository;
 
-    public WebController(EpisodeService episodeService, UserRepository userRepository, PasswordEncoder passwordEncoder) {
+    public WebController(EpisodeService episodeService,
+                         UserRepository userRepository,
+                         PasswordEncoder passwordEncoder,
+                         com.podcastrelease.repository.PodcastShowRepository podcastShowRepository) {
         this.episodeService = episodeService;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.podcastShowRepository = podcastShowRepository;
     }
 
     @GetMapping("/login")
@@ -82,6 +87,7 @@ public class WebController {
         model.addAttribute("fromDateFilter", from);
         model.addAttribute("toDateFilter", to);
         model.addAttribute("statuses", EpisodeStatus.values());
+        model.addAttribute("shows", podcastShowRepository.findAll());
 
         if (authentication != null) {
             User currentUser = userRepository.findByUsername(authentication.getName()).orElse(null);
@@ -94,17 +100,22 @@ public class WebController {
     @GetMapping("/episodes/new")
     public String newEpisodeForm(Model model) {
         model.addAttribute("episode", new Episode());
+        model.addAttribute("shows", podcastShowRepository.findAll());
         return "create";
     }
 
     @PostMapping("/episodes/create")
     public String createEpisode(
             @ModelAttribute Episode episode,
+            @RequestParam(value = "podcastShowId", required = false) Long podcastShowId,
             @RequestParam(value = "audioFile", required = false) org.springframework.web.multipart.MultipartFile audioFile,
             Authentication authentication,
             RedirectAttributes redirectAttributes) {
 
         try {
+            if (podcastShowId != null) {
+                podcastShowRepository.findById(podcastShowId).ifPresent(episode::setPodcastShow);
+            }
             if (audioFile != null && !audioFile.isEmpty()) {
                 String uploadedUrl = episodeService.saveAudioFile(audioFile);
                 episode.setAudioFileUrl(uploadedUrl);
@@ -142,6 +153,7 @@ public class WebController {
             return "redirect:/episodes/" + id;
         }
         model.addAttribute("episode", episode);
+        model.addAttribute("shows", podcastShowRepository.findAll());
         return "edit";
     }
 
@@ -149,11 +161,15 @@ public class WebController {
     public String updateEpisode(
             @PathVariable Long id,
             @ModelAttribute Episode updatedEpisode,
+            @RequestParam(value = "podcastShowId", required = false) Long podcastShowId,
             @RequestParam(value = "audioFile", required = false) org.springframework.web.multipart.MultipartFile audioFile,
             Authentication authentication,
             RedirectAttributes redirectAttributes) {
 
         try {
+            if (podcastShowId != null) {
+                updatedEpisode.setPodcastShow(podcastShowRepository.findById(podcastShowId).orElse(null));
+            }
             if (audioFile != null && !audioFile.isEmpty()) {
                 String uploadedUrl = episodeService.saveAudioFile(audioFile);
                 updatedEpisode.setAudioFileUrl(uploadedUrl);

@@ -52,14 +52,14 @@ public class SecurityConfig {
                 .frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin)
             )
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/login", "/signup", "/css/**", "/js/**", "/h2-console/**", "/api/auth/login", "/api/auth/register").permitAll()
+                .requestMatchers("/login", "/signup", "/css/**", "/js/**", "/h2-console/**", "/api/auth/login", "/api/auth/register", "/feed.xml", "/rss", "/shows/*/feed.xml").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/episodes").hasAnyRole("PRODUCER", "ADMIN")
                 .requestMatchers(HttpMethod.PUT, "/api/episodes/**").hasAnyRole("PRODUCER", "ADMIN")
                 .requestMatchers(HttpMethod.PATCH, "/api/episodes/*/status").hasAnyRole("PRODUCER", "HOST", "ADMIN")
                 .requestMatchers("/api/episodes/*/audit").hasAnyRole("ADMIN", "HOST")
                 .requestMatchers("/api/dashboard/summary").hasAnyRole("HOST", "ADMIN", "PRODUCER")
                 .requestMatchers("/api/episodes/**").hasAnyRole("PRODUCER", "HOST", "ADMIN")
-                .requestMatchers("/dashboard").hasAnyRole("HOST", "ADMIN", "PRODUCER")
+                .requestMatchers("/shows/**", "/platforms/**", "/dashboard").hasAnyRole("HOST", "ADMIN", "PRODUCER")
                 .anyRequest().authenticated()
             )
             .formLogin(form -> form

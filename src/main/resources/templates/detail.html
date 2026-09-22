@@ -72,17 +72,24 @@
                 </div>
 
                 <div class="row g-3 p-3 bg-light rounded-3 mb-4 border">
-                    <div class="col-md-4">
+                    <div class="col-md-3">
+                        <div class="text-muted small">Podcast Show</div>
+                        <div class="fw-bold text-dark">
+                            <i class="bi bi-broadcast me-1 text-primary"></i>
+                            <span th:text="${episode.podcastShow != null ? episode.podcastShow.name : 'Unassigned'}">Show Name</span>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
                         <div class="text-muted small">Target Publish Date</div>
                         <div class="fw-bold text-dark"><i class="bi bi-calendar-event me-1 text-primary"></i><span th:text="${episode.publishDate}">2026-08-30</span></div>
                     </div>
-                    <div class="col-md-4">
-                        <div class="text-muted small">Created By</div>
-                        <div class="fw-bold text-dark"><i class="bi bi-person me-1 text-primary"></i><span th:text="${episode.createdBy != null ? episode.createdBy.username : 'System'}">Producer</span></div>
+                    <div class="col-md-3">
+                        <div class="text-muted small">Audio Duration</div>
+                        <div class="fw-bold text-dark"><i class="bi bi-stopwatch me-1 text-primary"></i><span th:text="${episode.formattedDuration != null ? episode.formattedDuration : 'N/A'}">00:04:00</span></div>
                     </div>
-                    <div class="col-md-4">
-                        <div class="text-muted small">Last Updated</div>
-                        <div class="fw-bold text-dark"><i class="bi bi-clock-history me-1 text-primary"></i><span th:text="${#temporals.format(episode.updatedAt, 'yyyy-MM-dd HH:mm')}">Timestamp</span></div>
+                    <div class="col-md-3">
+                        <div class="text-muted small">File Size</div>
+                        <div class="fw-bold text-dark"><i class="bi bi-file-earmark-zip me-1 text-primary"></i><span th:text="${episode.fileSizeBytes != null ? (episode.fileSizeBytes / 1024 + ' KB') : 'N/A'}">352 KB</span></div>
                     </div>
                 </div>
 

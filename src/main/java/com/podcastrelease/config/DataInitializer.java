@@ -1,13 +1,8 @@
 package com.podcastrelease.config;
 
-import com.podcastrelease.model.AuditLog;
-import com.podcastrelease.model.Episode;
-import com.podcastrelease.model.EpisodeStatus;
-import com.podcastrelease.model.User;
-import com.podcastrelease.model.UserRole;
-import com.podcastrelease.repository.AuditLogRepository;
-import com.podcastrelease.repository.EpisodeRepository;
-import com.podcastrelease.repository.UserRepository;
+import com.podcastrelease.model.*;
+import com.podcastrelease.repository.*;
+import com.podcastrelease.service.AudioInspectorService;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
@@ -30,20 +25,96 @@ public class DataInitializer implements CommandLineRunner {
     private final EpisodeRepository episodeRepository;
     private final AuditLogRepository auditLogRepository;
     private final PasswordEncoder passwordEncoder;
+    private final PodcastShowRepository podcastShowRepository;
+    private final PlatformAccountRepository platformAccountRepository;
+    private final WebhookConfigRepository webhookConfigRepository;
+    private final AudioInspectorService audioInspectorService;
 
     public DataInitializer(UserRepository userRepository,
                            EpisodeRepository episodeRepository,
                            AuditLogRepository auditLogRepository,
-                           PasswordEncoder passwordEncoder) {
+                           PasswordEncoder passwordEncoder,
+                           PodcastShowRepository podcastShowRepository,
+                           PlatformAccountRepository platformAccountRepository,
+                           WebhookConfigRepository webhookConfigRepository,
+                           AudioInspectorService audioInspectorService) {
         this.userRepository = userRepository;
         this.episodeRepository = episodeRepository;
         this.auditLogRepository = auditLogRepository;
         this.passwordEncoder = passwordEncoder;
+        this.podcastShowRepository = podcastShowRepository;
+        this.platformAccountRepository = platformAccountRepository;
+        this.webhookConfigRepository = webhookConfigRepository;
+        this.audioInspectorService = audioInspectorService;
     }
 
     @Override
     public void run(String... args) {
         ensureSampleAudioFilesExist();
+
+        // Seed Podcast Shows
+        PodcastShow show1 = null;
+        PodcastShow show2 = null;
+        if (podcastShowRepository.count() == 0) {
+            show1 = podcastShowRepository.save(new PodcastShow(
+                    "Tech & AI Insights",
+                    "tech-ai-insights",
+                    "Deep dives into AI, software engineering, and high-throughput system design.",
+                    "Technology",
+                    "Talha Patrawala",
+                    "producer@podcastrelease.com",
+                    "https://podcastrelease.com/artwork/tech.png"
+            ));
+
+            show2 = podcastShowRepository.save(new PodcastShow(
+                    "DevOps Uncut",
+                    "devops-uncut",
+                    "Raw and unfiltered discussions on CI/CD pipelines, Kubernetes, cloud native security, and infrastructure automation.",
+                    "Technology",
+                    "DevOps Engineering Team",
+                    "devops@podcastrelease.com",
+                    "https://podcastrelease.com/artwork/devops.png"
+            ));
+        } else {
+            show1 = podcastShowRepository.findBySlug("tech-ai-insights").orElse(null);
+            show2 = podcastShowRepository.findBySlug("devops-uncut").orElse(null);
+        }
+
+        // Seed Platform Accounts
+        if (platformAccountRepository.count() == 0) {
+            platformAccountRepository.save(new PlatformAccount(
+                    "YouTube Podcasts Channel",
+                    PlatformAccount.PlatformType.YOUTUBE,
+                    "https://upload.youtube.com/my_podcast_channel",
+                    "sample_yt_oauth_token_sec_key",
+                    true
+            ));
+
+            platformAccountRepository.save(new PlatformAccount(
+                    "Buzzsprout Hosting Account",
+                    PlatformAccount.PlatformType.BUZZSPROUT,
+                    "https://api.buzzsprout.com/v1/episodes",
+                    "bz_api_key_88392019481029",
+                    true
+            ));
+        }
+
+        // Seed Webhook Configs
+        if (webhookConfigRepository.count() == 0) {
+            webhookConfigRepository.save(new WebhookConfig(
+                    "Slack Release Notifications",
+                    WebhookConfig.WebhookType.SLACK,
+                    "https://example.com/webhooks/slack-release-alerts",
+                    true
+            ));
+
+            webhookConfigRepository.save(new WebhookConfig(
+                    "Discord Alert Channel",
+                    WebhookConfig.WebhookType.DISCORD,
+                    "https://example.com/webhooks/discord-release-alerts",
+                    true
+            ));
+        }
 
         if (userRepository.count() == 0) {
             User producer = userRepository.save(new User("producer", passwordEncoder.encode("password123"), UserRole.PRODUCER));
@@ -60,7 +131,8 @@ public class DataInitializer implements CommandLineRunner {
                 );
                 ep1.setCreatedBy(producer);
                 ep1.setStatus(EpisodeStatus.PUBLISHED);
-                ep1 = episodeRepository.save(ep1);
+                ep1.setPodcastShow(show1);
+                ep1 = saveAndInspect(ep1);
                 auditLogRepository.save(new AuditLog(ep1.getId(), "CREATE_EPISODE (Status: DRAFT)", producer));
                 auditLogRepository.save(new AuditLog(ep1.getId(), "STATUS_CHANGE: DRAFT -> VALIDATED", producer));
                 auditLogRepository.save(new AuditLog(ep1.getId(), "STATUS_CHANGE: VALIDATED -> PUBLISHED", host));
@@ -74,7 +146,8 @@ public class DataInitializer implements CommandLineRunner {
                 );
                 ep2.setCreatedBy(producer);
                 ep2.setStatus(EpisodeStatus.PUBLISHED);
-                ep2 = episodeRepository.save(ep2);
+                ep2.setPodcastShow(show1);
+                ep2 = saveAndInspect(ep2);
                 auditLogRepository.save(new AuditLog(ep2.getId(), "CREATE_EPISODE (Status: DRAFT)", producer));
                 auditLogRepository.save(new AuditLog(ep2.getId(), "STATUS_CHANGE: DRAFT -> VALIDATED", producer));
                 auditLogRepository.save(new AuditLog(ep2.getId(), "STATUS_CHANGE: VALIDATED -> PUBLISHED", admin));
@@ -88,7 +161,8 @@ public class DataInitializer implements CommandLineRunner {
                 );
                 ep3.setCreatedBy(producer);
                 ep3.setStatus(EpisodeStatus.PUBLISHED);
-                ep3 = episodeRepository.save(ep3);
+                ep3.setPodcastShow(show2);
+                ep3 = saveAndInspect(ep3);
                 auditLogRepository.save(new AuditLog(ep3.getId(), "CREATE_EPISODE (Status: DRAFT)", producer));
                 auditLogRepository.save(new AuditLog(ep3.getId(), "STATUS_CHANGE: DRAFT -> VALIDATED", producer));
                 auditLogRepository.save(new AuditLog(ep3.getId(), "STATUS_CHANGE: VALIDATED -> PUBLISHED", producer));
@@ -102,7 +176,8 @@ public class DataInitializer implements CommandLineRunner {
                 );
                 ep4.setCreatedBy(producer);
                 ep4.setStatus(EpisodeStatus.VALIDATED);
-                ep4 = episodeRepository.save(ep4);
+                ep4.setPodcastShow(show1);
+                ep4 = saveAndInspect(ep4);
                 auditLogRepository.save(new AuditLog(ep4.getId(), "CREATE_EPISODE (Status: DRAFT)", producer));
                 auditLogRepository.save(new AuditLog(ep4.getId(), "STATUS_CHANGE: DRAFT -> VALIDATED", producer));
 
@@ -115,7 +190,8 @@ public class DataInitializer implements CommandLineRunner {
                 );
                 ep5.setCreatedBy(producer);
                 ep5.setStatus(EpisodeStatus.VALIDATED);
-                ep5 = episodeRepository.save(ep5);
+                ep5.setPodcastShow(show1);
+                ep5 = saveAndInspect(ep5);
                 auditLogRepository.save(new AuditLog(ep5.getId(), "CREATE_EPISODE (Status: DRAFT)", producer));
                 auditLogRepository.save(new AuditLog(ep5.getId(), "STATUS_CHANGE: DRAFT -> VALIDATED", producer));
 
@@ -128,7 +204,8 @@ public class DataInitializer implements CommandLineRunner {
                 );
                 ep6.setCreatedBy(producer);
                 ep6.setStatus(EpisodeStatus.DRAFT);
-                ep6 = episodeRepository.save(ep6);
+                ep6.setPodcastShow(show2);
+                ep6 = saveAndInspect(ep6);
                 auditLogRepository.save(new AuditLog(ep6.getId(), "CREATE_EPISODE (Status: DRAFT)", producer));
 
                 // Episode 107 - Draft
@@ -140,7 +217,8 @@ public class DataInitializer implements CommandLineRunner {
                 );
                 ep7.setCreatedBy(producer);
                 ep7.setStatus(EpisodeStatus.DRAFT);
-                ep7 = episodeRepository.save(ep7);
+                ep7.setPodcastShow(show2);
+                ep7 = saveAndInspect(ep7);
                 auditLogRepository.save(new AuditLog(ep7.getId(), "CREATE_EPISODE (Status: DRAFT)", producer));
 
                 // Episode 108 - Failed
@@ -152,12 +230,18 @@ public class DataInitializer implements CommandLineRunner {
                 );
                 ep8.setCreatedBy(producer);
                 ep8.setStatus(EpisodeStatus.FAILED);
-                ep8 = episodeRepository.save(ep8);
+                ep8.setPodcastShow(show2);
+                ep8 = saveAndInspect(ep8);
                 auditLogRepository.save(new AuditLog(ep8.getId(), "CREATE_EPISODE (Status: DRAFT)", producer));
                 auditLogRepository.save(new AuditLog(ep8.getId(), "STATUS_CHANGE: DRAFT -> VALIDATED", producer));
                 auditLogRepository.save(new AuditLog(ep8.getId(), "STATUS_CHANGE: VALIDATED -> FAILED (Validation Error)", admin));
             }
         }
+    }
+
+    private Episode saveAndInspect(Episode episode) {
+        audioInspectorService.inspectAndPopulate(episode);
+        return episodeRepository.save(episode);
     }
 
     private void ensureSampleAudioFilesExist() {
