@@ -37,8 +37,15 @@ public class Episode {
     private User createdBy;
 
     @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "approved_by")
+    private User approvedBy;
+
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "podcast_show_id")
     private PodcastShow podcastShow;
+
+    @Column(columnDefinition = "TEXT")
+    private String reviewNotes;
 
     private Integer durationSeconds;
     private String formattedDuration;
@@ -80,8 +87,14 @@ public class Episode {
     public User getCreatedBy() { return createdBy; }
     public void setCreatedBy(User createdBy) { this.createdBy = createdBy; }
 
+    public User getApprovedBy() { return approvedBy; }
+    public void setApprovedBy(User approvedBy) { this.approvedBy = approvedBy; }
+
     public PodcastShow getPodcastShow() { return podcastShow; }
     public void setPodcastShow(PodcastShow podcastShow) { this.podcastShow = podcastShow; }
+
+    public String getReviewNotes() { return reviewNotes; }
+    public void setReviewNotes(String reviewNotes) { this.reviewNotes = reviewNotes; }
 
     public Integer getDurationSeconds() { return durationSeconds; }
     public void setDurationSeconds(Integer durationSeconds) { this.durationSeconds = durationSeconds; }

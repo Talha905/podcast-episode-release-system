@@ -20,14 +20,14 @@
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark navbar-custom mb-4 py-3">
         <div class="container">
-            <a class="navbar-brand fw-bold d-flex align-items-center gap-2" href="/">
+            <a class="navbar-brand fw-bold d-flex align-items-center gap-2" th:href="@{/}">
                 <span class="fs-4"><i class="bi bi-mic-fill text-primary"></i></span>
                 <span>Podcast Release System</span>
             </a>
             <div class="d-flex align-items-center gap-2">
-                <a href="/episodes" class="btn btn-outline-light btn-sm rounded-pill px-3"><i class="bi bi-collection-play me-1"></i> Episodes Catalog</a>
-                <a href="/shows" class="btn btn-outline-light btn-sm rounded-pill px-3"><i class="bi bi-folder-fill me-1"></i> Podcast Shows</a>
-                <a href="/feed.xml" target="_blank" class="btn btn-warning btn-sm rounded-pill px-3 fw-bold"><i class="bi bi-rss-fill me-1"></i> Global RSS 2.0 Feed</a>
+                <a th:href="@{/episodes}" class="btn btn-outline-light btn-sm rounded-pill px-3"><i class="bi bi-collection-play me-1"></i> Episodes Catalog</a>
+                <a th:href="@{/shows}" class="btn btn-outline-light btn-sm rounded-pill px-3"><i class="bi bi-folder-fill me-1"></i> Podcast Shows</a>
+                <a th:href="@{/feed.xml}" target="_blank" class="btn btn-warning btn-sm rounded-pill px-3 fw-bold"><i class="bi bi-rss-fill me-1"></i> Global RSS 2.0 Feed</a>
             </div>
         </div>
     </nav>
@@ -41,51 +41,51 @@
         <!-- Connected Platform Accounts Section -->
         <div class="card card-custom mb-4">
             <div class="card-body p-4">
-                <h4 class="fw-bold mb-3"><i class="bi bi-share-fill text-primary me-2"></i>Connected Distribution Accounts (YouTube, Buzzsprout, Transistor)</h4>
-                <form th:action="@{/platforms/accounts/create}" method="post" th:object="${newPlatform}" class="row g-3 mb-4 p-3 bg-light rounded-3 border">
-                    <div class="col-md-3">
-                        <label class="form-label fw-semibold">Platform Name *</label>
-                        <input type="text" name="platformName" class="form-control" placeholder="e.g. Official YouTube Channel" required>
+                <h4 class="fw-bold mb-1"><i class="bi bi-share-fill text-primary me-2"></i>Direct Platform Integrations (OAuth 2.0 1-Click Connect)</h4>
+                <p class="text-muted small mb-4">Connect your podcast channels with 1-click authorization — no API keys required!</p>
+
+                <!-- 1-Click OAuth Action Bar -->
+                <div class="row g-3 mb-4 p-3 bg-light rounded-3 border align-items-center">
+                    <div class="col-md-4">
+                        <a th:href="@{/platforms/oauth2/connect/youtube}" class="btn btn-danger w-100 py-2.5 rounded-pill fw-semibold shadow-sm">
+                            <i class="bi bi-youtube me-2"></i> Connect YouTube Channel
+                        </a>
                     </div>
-                    <div class="col-md-3">
-                        <label class="form-label fw-semibold">Platform Type *</label>
-                        <select name="platformType" class="form-select" required>
-                            <option value="YOUTUBE" selected>YouTube Podcasts</option>
-                            <option value="BUZZSPROUT">Buzzsprout API</option>
-                            <option value="TRANSISTOR">Transistor.fm</option>
-                        </select>
+                    <div class="col-md-4">
+                        <a th:href="@{/platforms/oauth2/connect/buzzsprout}" class="btn btn-warning text-white w-100 py-2.5 rounded-pill fw-semibold shadow-sm">
+                            <i class="bi bi-broadcast me-2"></i> Connect Buzzsprout
+                        </a>
                     </div>
-                    <div class="col-md-3">
-                        <label class="form-label fw-semibold">Account Identifier</label>
-                        <input type="text" name="accountIdentifier" class="form-control" placeholder="e.g. @DevOpsChannel">
+                    <div class="col-md-4">
+                        <a th:href="@{/platforms/oauth2/connect/transistor}" class="btn btn-purple text-white w-100 py-2.5 rounded-pill fw-semibold shadow-sm" style="background-color: #7c3aed;">
+                            <i class="bi bi-soundwave me-2"></i> Connect Transistor
+                        </a>
                     </div>
-                    <div class="col-md-3">
-                        <label class="form-label fw-semibold">API Key / Access Token</label>
-                        <input type="password" name="apiKey" class="form-control" placeholder="API key or token">
-                    </div>
-                    <div class="col-12 text-end">
-                        <button type="submit" class="btn btn-primary rounded-pill px-4 fw-semibold"><i class="bi bi-plus-lg me-1"></i> Connect Platform Account</button>
-                    </div>
-                </form>
+                </div>
 
                 <table class="table table-hover align-middle mb-0">
                     <thead class="table-light">
                         <tr>
                             <th>Platform Name</th>
                             <th>Type</th>
-                            <th>Account Handle</th>
-                            <th>Status</th>
+                            <th>Connected Channel Handle</th>
+                            <th>OAuth Token Status</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr th:each="p : ${platforms}">
                             <td class="fw-bold text-dark" th:text="${p.platformName}">YouTube</td>
                             <td><span class="badge bg-primary me-1" th:text="${p.platformType}">YOUTUBE</span></td>
-                            <td th:text="${p.accountIdentifier != null ? p.accountIdentifier : 'Default'}">@handle</td>
-                            <td><span class="badge bg-success-subtle text-success border">Active</span></td>
+                            <td>
+                                <span class="fw-semibold text-dark"><i class="bi bi-patch-check-fill text-primary me-1"></i><span th:text="${p.connectedAccountName != null ? p.connectedAccountName : (p.accountIdentifier != null ? p.accountIdentifier : 'Connected Channel')}">@channel</span></span>
+                            </td>
+                            <td><span class="badge bg-success-subtle text-success border px-3 py-1.5 rounded-pill"><i class="bi bi-shield-check me-1"></i> OAuth 2.0 Active</span></td>
                         </tr>
                         <tr th:if="${#lists.isEmpty(platforms)}">
-                            <td colspan="4" class="text-center text-muted py-3">No external publishing platforms connected yet.</td>
+                            <td colspan="4" class="text-center text-muted py-4">
+                                <i class="bi bi-plug fs-2 text-slate-400 d-block mb-1"></i>
+                                No external publishing channels connected yet. Click any button above to authorization 1-Click connect!
+                            </td>
                         </tr>
                     </tbody>
                 </table>

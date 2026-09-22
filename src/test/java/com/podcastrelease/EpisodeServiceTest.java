@@ -29,10 +29,17 @@ class EpisodeServiceTest {
     @Autowired
     private AuditLogRepository auditLogRepository;
 
+    @Autowired
+    private com.podcastrelease.repository.UserRepository userRepository;
+
     @BeforeEach
     void setUp() {
         auditLogRepository.deleteAll();
         episodeRepository.deleteAll();
+        userRepository.deleteAll();
+
+        userRepository.save(new com.podcastrelease.model.User("producer", "producer@example.com", "pass", com.podcastrelease.model.UserRole.PRODUCER));
+        userRepository.save(new com.podcastrelease.model.User("admin", "admin@example.com", "pass", com.podcastrelease.model.UserRole.ADMIN));
     }
 
     @Test

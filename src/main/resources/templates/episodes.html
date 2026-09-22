@@ -62,19 +62,22 @@
     <!-- Navigation Bar -->
     <nav class="navbar navbar-expand-lg navbar-dark navbar-custom mb-4 py-3">
         <div class="container">
-            <a class="navbar-brand fw-bold d-flex align-items-center gap-2" href="/">
+            <a class="navbar-brand fw-bold d-flex align-items-center gap-2" th:href="@{/}">
                 <span class="fs-4"><i class="bi bi-mic-fill text-primary"></i></span>
                 <span>Podcast Release System</span>
             </a>
             <div class="d-flex align-items-center text-white gap-2">
-                <a href="/shows" class="btn btn-outline-light btn-sm rounded-pill px-3 me-1">
+                <a th:href="@{/shows}" class="btn btn-outline-light btn-sm rounded-pill px-3 me-1">
                     <i class="bi bi-broadcast-pin me-1"></i> Shows
                 </a>
-                <a href="/platforms" class="btn btn-outline-light btn-sm rounded-pill px-3 me-1">
+                <a th:href="@{/platforms}" class="btn btn-outline-light btn-sm rounded-pill px-3 me-1">
                     <i class="bi bi-share me-1"></i> Integrations
                 </a>
-                <a href="/feed.xml" target="_blank" class="btn btn-outline-warning btn-sm rounded-pill px-3 me-2">
+                <a th:href="@{/feed.xml}" target="_blank" class="btn btn-outline-warning btn-sm rounded-pill px-3 me-1">
                     <i class="bi bi-rss-fill me-1"></i> RSS Feed
+                </a>
+                <a th:href="@{/admin/users}" class="btn btn-danger btn-sm rounded-pill px-3 me-2" sec:authorize="hasRole('ADMIN')">
+                    <i class="bi bi-people-fill me-1"></i> User Management
                 </a>
                 <div class="d-flex align-items-center gap-2 bg-slate-800 px-3 py-1.5 rounded-pill bg-opacity-50 border border-secondary border-opacity-25" th:if="${currentUser}">
                     <i class="bi bi-person-circle text-primary"></i>
@@ -173,7 +176,7 @@
                     </div>
                     <div class="col-md-1 d-flex gap-1">
                         <button type="submit" class="btn btn-primary w-100" title="Search"><i class="bi bi-funnel-fill"></i></button>
-                        <a href="/episodes" class="btn btn-outline-secondary" title="Reset Filters"><i class="bi bi-arrow-counterclockwise"></i></a>
+                        <a th:href="@{/episodes}" class="btn btn-outline-secondary" title="Reset Filters"><i class="bi bi-arrow-counterclockwise"></i></a>
                     </div>
                 </form>
             </div>

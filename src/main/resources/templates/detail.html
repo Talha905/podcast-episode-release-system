@@ -35,12 +35,12 @@
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark navbar-custom mb-4 py-3">
         <div class="container">
-            <a class="navbar-brand fw-bold d-flex align-items-center gap-2" href="/">
+            <a class="navbar-brand fw-bold d-flex align-items-center gap-2" th:href="@{/}">
                 <span class="fs-4"><i class="bi bi-mic-fill text-primary"></i></span>
                 <span>Podcast Release System</span>
             </a>
             <div class="d-flex align-items-center text-white">
-                <a href="/episodes" class="btn btn-outline-light btn-sm rounded-pill px-3">
+                <a th:href="@{/episodes}" class="btn btn-outline-light btn-sm rounded-pill px-3">
                     <i class="bi bi-arrow-left me-1"></i> Back to Catalog
                 </a>
             </div>
@@ -88,9 +88,17 @@
                         <div class="fw-bold text-dark"><i class="bi bi-stopwatch me-1 text-primary"></i><span th:text="${episode.formattedDuration != null ? episode.formattedDuration : 'N/A'}">00:04:00</span></div>
                     </div>
                     <div class="col-md-3">
-                        <div class="text-muted small">File Size</div>
-                        <div class="fw-bold text-dark"><i class="bi bi-file-earmark-zip me-1 text-primary"></i><span th:text="${episode.fileSizeBytes != null ? (episode.fileSizeBytes / 1024 + ' KB') : 'N/A'}">352 KB</span></div>
+                        <div class="text-muted small">File Size / Approved By</div>
+                        <div class="fw-bold text-dark">
+                            <i class="bi bi-person-check me-1 text-primary"></i>
+                            <span th:text="${episode.approvedBy != null ? 'Approved by ' + episode.approvedBy.username : (episode.fileSizeBytes != null ? (episode.fileSizeBytes / 1024 + ' KB') : 'N/A')}">Host</span>
+                        </div>
                     </div>
+                </div>
+
+                <div class="mb-4" th:if="${episode.reviewNotes != null && !episode.reviewNotes.empty}">
+                    <h6 class="fw-bold text-uppercase text-muted small"><i class="bi bi-chat-left-text me-1 text-warning"></i> Host Review & Approval Notes</h6>
+                    <div class="p-3 bg-warning-subtle border border-warning-subtle rounded-3 text-dark small" th:text="${episode.reviewNotes}">Host feedback notes...</div>
                 </div>
 
                 <div class="mb-4">
@@ -102,12 +110,12 @@
                 <div class="mb-4 p-3 bg-light rounded-3 border" th:if="${episode.audioFileUrl != null && !episode.audioFileUrl.empty}">
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <h6 class="fw-bold text-dark mb-0"><i class="bi bi-music-note-beamed text-primary me-1"></i> Audio Preview</h6>
-                        <a th:href="${episode.audioFileUrl}" target="_blank" class="btn btn-sm btn-outline-secondary rounded-pill">
+                        <a th:href="${episode.audioFileUrl.startsWith('/') ? #servletContext.contextPath + episode.audioFileUrl : episode.audioFileUrl}" target="_blank" class="btn btn-sm btn-outline-secondary rounded-pill">
                             <i class="bi bi-download me-1"></i> Direct Link
                         </a>
                     </div>
                     <audio controls class="w-100">
-                        <source th:src="${episode.audioFileUrl}">
+                        <source th:src="${episode.audioFileUrl.startsWith('/') ? #servletContext.contextPath + episode.audioFileUrl : episode.audioFileUrl}">
                         Your browser does not support the audio element.
                     </audio>
                 </div>
@@ -118,51 +126,54 @@
                 <!-- Status Workflow Actions -->
                 <div class="border-top pt-3">
                     <h6 class="fw-bold text-uppercase text-muted small mb-3"><i class="bi bi-signpost-split me-1"></i> Release Workflow Actions</h6>
-                    <div class="d-flex gap-2 flex-wrap align-items-center">
-                        <!-- Transition to VALIDATED (for DRAFT) -->
-                        <form th:action="@{/episodes/{id}/status(id=${episode.id})}" method="post" th:if="${episode.status.name() == 'DRAFT'}">
-                            <input type="hidden" name="status" value="VALIDATED">
-                            <button type="submit" class="btn btn-info text-white fw-semibold rounded-pill px-4">
-                                <i class="bi bi-check-circle me-1"></i> Submit for Validation
-                            </button>
-                        </form>
 
-                        <!-- Transition to PUBLISHED (for VALIDATED) -->
-                        <form th:action="@{/episodes/{id}/status(id=${episode.id})}" method="post" th:if="${episode.status.name() == 'VALIDATED'}">
-                            <input type="hidden" name="status" value="PUBLISHED">
-                            <button type="submit" class="btn btn-success fw-semibold rounded-pill px-4">
-                                <i class="bi bi-broadcast me-1"></i> Publish Episode
-                            </button>
-                        </form>
-
-                        <!-- Transition to FAILED (for VALIDATED) -->
-                        <form th:action="@{/episodes/{id}/status(id=${episode.id})}" method="post" th:if="${episode.status.name() == 'VALIDATED'}">
-                            <input type="hidden" name="status" value="FAILED">
-                            <button type="submit" class="btn btn-outline-danger fw-semibold rounded-pill px-3">
-                                <i class="bi bi-x-circle me-1"></i> Mark Failed
-                            </button>
-                        </form>
-
-                        <!-- Admin / Host Override Buttons -->
-                        <div sec:authorize="hasAnyRole('HOST', 'ADMIN')" class="dropdown d-inline">
-                            <button class="btn btn-warning dropdown-toggle fw-semibold rounded-pill px-3" type="button" data-bs-toggle="dropdown">
-                                <i class="bi bi-shield-lock me-1"></i> Role Override Status
-                            </button>
-                            <ul class="dropdown-menu shadow">
-                                <li th:each="st : ${statuses}">
-                                    <form th:action="@{/episodes/{id}/status(id=${episode.id})}" method="post">
-                                        <input type="hidden" name="status" th:value="${st}">
-                                        <button type="submit" class="dropdown-item" th:text="${'Set to ' + st}"></button>
-                                    </form>
-                                </li>
-                            </ul>
+                    <!-- Host / Admin Review Notes Input -->
+                    <form th:action="@{/episodes/{id}/status(id=${episode.id})}" method="post" id="statusForm">
+                        <div class="mb-3" sec:authorize="hasAnyRole('HOST', 'ADMIN')" th:if="${episode.status.name() == 'VALIDATED'}">
+                            <label for="reviewNotes" class="form-label text-muted small fw-semibold">Review Notes / Feedback (Optional)</label>
+                            <textarea id="reviewNotes" name="reviewNotes" class="form-control form-control-sm" rows="2" placeholder="e.g. Approved for Friday morning release, audio levels sound crisp!"></textarea>
                         </div>
 
-                        <!-- Edit Metadata Button -->
-                        <a th:href="@{/episodes/{id}/edit(id=${episode.id})}" class="btn btn-secondary rounded-pill px-4" sec:authorize="hasAnyRole('PRODUCER', 'ADMIN')" th:if="${episode.status.name() == 'DRAFT' || episode.status.name() == 'VALIDATED'}">
-                            <i class="bi bi-pencil me-1"></i> Edit Metadata
-                        </a>
-                    </div>
+                        <div class="d-flex gap-2 flex-wrap align-items-center">
+                            <!-- Transition to VALIDATED (for DRAFT - Producer action) -->
+                            <button type="submit" name="status" value="VALIDATED" class="btn btn-info text-white fw-semibold rounded-pill px-4" th:if="${episode.status.name() == 'DRAFT'}">
+                                <i class="bi bi-check-circle me-1"></i> Submit for Validation
+                            </button>
+
+                            <!-- Transition to PUBLISHED (for VALIDATED - Host action) -->
+                            <button type="submit" name="status" value="PUBLISHED" class="btn btn-success fw-semibold rounded-pill px-4" th:if="${episode.status.name() == 'VALIDATED'}" sec:authorize="hasAnyRole('HOST', 'ADMIN')">
+                                <i class="bi bi-broadcast me-1"></i> Approve & Publish Episode
+                            </button>
+
+                            <!-- Request Changes / Reject (for VALIDATED - Host action) -->
+                            <button type="submit" name="status" value="DRAFT" class="btn btn-outline-warning fw-semibold rounded-pill px-3" th:if="${episode.status.name() == 'VALIDATED'}" sec:authorize="hasAnyRole('HOST', 'ADMIN')">
+                                <i class="bi bi-arrow-counterclockwise me-1"></i> Request Changes (Return to Draft)
+                            </button>
+
+                            <!-- Transition to FAILED -->
+                            <button type="submit" name="status" value="FAILED" class="btn btn-outline-danger fw-semibold rounded-pill px-3" th:if="${episode.status.name() == 'VALIDATED'}" sec:authorize="hasAnyRole('HOST', 'ADMIN')">
+                                <i class="bi bi-x-circle me-1"></i> Mark Release Failed
+                            </button>
+
+                            <!-- Admin Override Buttons -->
+                            <div sec:authorize="hasRole('ADMIN')" class="dropdown d-inline">
+                                <button class="btn btn-warning dropdown-toggle fw-semibold rounded-pill px-3" type="button" data-bs-toggle="dropdown">
+                                    <i class="bi bi-shield-lock me-1"></i> Admin Override Status
+                                </button>
+                                <ul class="dropdown-menu shadow">
+                                    <li th:each="st : ${statuses}">
+                                        <button type="submit" name="status" th:value="${st}" class="dropdown-item" th:text="${'Set to ' + st}"></button>
+                                    </li>
+                                </ul>
+                            </div>
+
+                            <!-- Edit Metadata Button -->
+                            <a th:href="@{/episodes/{id}/edit(id=${episode.id})}" class="btn btn-secondary rounded-pill px-4" sec:authorize="hasAnyRole('PRODUCER', 'ADMIN')" th:if="${episode.status.name() == 'DRAFT' || episode.status.name() == 'VALIDATED'}">
+                                <i class="bi bi-pencil me-1"></i> Edit Metadata
+                            </a>
+                        </div>
+                    </form>
+                </div>
                 </div>
             </div>
         </div>

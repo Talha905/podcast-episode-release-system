@@ -30,3 +30,4 @@ application-prod.properties
 # .DS_Store
 # *.log
 # application-prod.properties
+uploads/

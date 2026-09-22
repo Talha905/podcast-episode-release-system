@@ -103,6 +103,11 @@ public class EpisodeService {
 
     @Transactional
     public Episode updateStatus(Long id, EpisodeStatus targetStatus, String username) {
+        return updateStatus(id, targetStatus, username, null);
+    }
+
+    @Transactional
+    public Episode updateStatus(Long id, EpisodeStatus targetStatus, String username, String reviewNotes) {
         Episode existing = findById(id);
         User user = username != null ? userRepository.findByUsername(username).orElse(null) : null;
         EpisodeStatus currentStatus = existing.getStatus();
@@ -115,13 +120,22 @@ public class EpisodeService {
 
         if (targetStatus == EpisodeStatus.PUBLISHED) {
             validatePrePublish(existing);
+            existing.setApprovedBy(user);
+        }
+
+        if (reviewNotes != null && !reviewNotes.trim().isEmpty()) {
+            existing.setReviewNotes(reviewNotes.trim());
         }
 
         existing.setStatus(targetStatus);
         existing.setUpdatedAt(LocalDateTime.now());
 
         Episode saved = episodeRepository.save(existing);
-        createAuditLog(saved.getId(), "STATUS_CHANGE: " + currentStatus + " -> " + targetStatus + (isOverrideRole ? " (Role Override)" : ""), user);
+        String auditAction = "STATUS_CHANGE: " + currentStatus + " -> " + targetStatus + (isOverrideRole ? " (Role Override)" : "");
+        if (reviewNotes != null && !reviewNotes.trim().isEmpty()) {
+            auditAction += " [Notes: " + reviewNotes.trim() + "]";
+        }
+        createAuditLog(saved.getId(), auditAction, user);
 
         if (targetStatus == EpisodeStatus.PUBLISHED || targetStatus == EpisodeStatus.FAILED) {
             distributionService.dispatchPublication(saved);

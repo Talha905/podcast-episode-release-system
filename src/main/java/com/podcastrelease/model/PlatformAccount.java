@@ -24,6 +24,11 @@ public class PlatformAccount {
     private String accountIdentifier;
     private String apiKey;
     private String oauthToken;
+    private String accessToken;
+    private String refreshToken;
+    private LocalDateTime tokenExpiresAt;
+    private String connectedAccountName;
+    private String connectedAccountAvatar;
     private boolean enabled;
 
     private LocalDateTime createdAt;
@@ -92,6 +97,46 @@ public class PlatformAccount {
 
     public void setOauthToken(String oauthToken) {
         this.oauthToken = oauthToken;
+    }
+
+    public String getAccessToken() {
+        return accessToken;
+    }
+
+    public void setAccessToken(String accessToken) {
+        this.accessToken = accessToken;
+    }
+
+    public String getRefreshToken() {
+        return refreshToken;
+    }
+
+    public void setRefreshToken(String refreshToken) {
+        this.refreshToken = refreshToken;
+    }
+
+    public LocalDateTime getTokenExpiresAt() {
+        return tokenExpiresAt;
+    }
+
+    public void setTokenExpiresAt(LocalDateTime tokenExpiresAt) {
+        this.tokenExpiresAt = tokenExpiresAt;
+    }
+
+    public String getConnectedAccountName() {
+        return connectedAccountName;
+    }
+
+    public void setConnectedAccountName(String connectedAccountName) {
+        this.connectedAccountName = connectedAccountName;
+    }
+
+    public String getConnectedAccountAvatar() {
+        return connectedAccountAvatar;
+    }
+
+    public void setConnectedAccountAvatar(String connectedAccountAvatar) {
+        this.connectedAccountAvatar = connectedAccountAvatar;
     }
 
     public boolean isEnabled() {

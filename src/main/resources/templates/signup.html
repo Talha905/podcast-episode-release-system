@@ -76,6 +76,15 @@
                     </div>
 
                     <div class="mb-3">
+                        <label for="email" class="form-label fw-semibold">Email Address *</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-white text-muted"><i class="bi bi-envelope"></i></span>
+                            <input type="email" id="email" name="email" class="form-control" placeholder="name@company.com" required>
+                        </div>
+                        <div class="form-text small">An OTP verification code will be sent to this email address.</div>
+                    </div>
+
+                    <div class="mb-3">
                         <label for="password" class="form-label fw-semibold">Password *</label>
                         <div class="input-group">
                             <span class="input-group-text bg-white text-muted"><i class="bi bi-lock"></i></span>
@@ -88,15 +97,13 @@
                         <div class="input-group">
                             <span class="input-group-text bg-white text-muted"><i class="bi bi-shield-check"></i></span>
                             <select id="role" name="role" class="form-select" required>
-                                <option value="PRODUCER" selected>PRODUCER (Create episodes, update metadata, transition status)</option>
-                                <option value="HOST">HOST (View episodes, view dashboard, override status)</option>
-                                <option value="ADMIN">ADMIN (Full access: Create, edit, view audit, override status)</option>
+                                <option th:each="r : ${roles}" th:value="${r}" th:text="${r + ' (' + (r.name() == 'PRODUCER' ? 'Create drafts, upload audio, submit for validation' : 'Review audio, approve/publish episodes') + ')'}"></option>
                             </select>
                         </div>
                     </div>
 
                     <button type="submit" class="btn btn-primary w-100 mb-3">
-                        <i class="bi bi-check-circle-fill me-2"></i>Create Account
+                        <i class="bi bi-envelope-at-fill me-2"></i>Register & Send Verification OTP
                     </button>
                 </form>
 

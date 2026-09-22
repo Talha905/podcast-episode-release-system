@@ -29,6 +29,7 @@ public class DataInitializer implements CommandLineRunner {
     private final PlatformAccountRepository platformAccountRepository;
     private final WebhookConfigRepository webhookConfigRepository;
     private final AudioInspectorService audioInspectorService;
+    private final PodcastShowMemberRepository podcastShowMemberRepository;
 
     public DataInitializer(UserRepository userRepository,
                            EpisodeRepository episodeRepository,
@@ -37,7 +38,8 @@ public class DataInitializer implements CommandLineRunner {
                            PodcastShowRepository podcastShowRepository,
                            PlatformAccountRepository platformAccountRepository,
                            WebhookConfigRepository webhookConfigRepository,
-                           AudioInspectorService audioInspectorService) {
+                           AudioInspectorService audioInspectorService,
+                           PodcastShowMemberRepository podcastShowMemberRepository) {
         this.userRepository = userRepository;
         this.episodeRepository = episodeRepository;
         this.auditLogRepository = auditLogRepository;
@@ -46,6 +48,7 @@ public class DataInitializer implements CommandLineRunner {
         this.platformAccountRepository = platformAccountRepository;
         this.webhookConfigRepository = webhookConfigRepository;
         this.audioInspectorService = audioInspectorService;
+        this.podcastShowMemberRepository = podcastShowMemberRepository;
     }
 
     @Override
@@ -117,9 +120,15 @@ public class DataInitializer implements CommandLineRunner {
         }
 
         if (userRepository.count() == 0) {
-            User producer = userRepository.save(new User("producer", passwordEncoder.encode("password123"), UserRole.PRODUCER));
-            User host = userRepository.save(new User("host", passwordEncoder.encode("password123"), UserRole.HOST));
-            User admin = userRepository.save(new User("admin", passwordEncoder.encode("password123"), UserRole.ADMIN));
+            User producer = userRepository.save(new User("producer", "producer@podcastrelease.com", passwordEncoder.encode("password123"), UserRole.PRODUCER));
+            User host = userRepository.save(new User("host", "host@podcastrelease.com", passwordEncoder.encode("password123"), UserRole.HOST));
+            User admin = userRepository.save(new User("admin", "admin@podcastrelease.com", passwordEncoder.encode("password123"), UserRole.ADMIN));
+
+            if (show1 != null && show2 != null) {
+                podcastShowMemberRepository.save(new PodcastShowMember(show1, producer, UserRole.PRODUCER));
+                podcastShowMemberRepository.save(new PodcastShowMember(show1, host, UserRole.HOST));
+                podcastShowMemberRepository.save(new PodcastShowMember(show2, producer, UserRole.PRODUCER));
+            }
 
             if (episodeRepository.count() == 0) {
                 // Episode 101 - Published

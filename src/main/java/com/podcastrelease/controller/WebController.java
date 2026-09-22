@@ -24,15 +24,18 @@ public class WebController {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final com.podcastrelease.repository.PodcastShowRepository podcastShowRepository;
+    private final com.podcastrelease.service.OtpService otpService;
 
     public WebController(EpisodeService episodeService,
                          UserRepository userRepository,
                          PasswordEncoder passwordEncoder,
-                         com.podcastrelease.repository.PodcastShowRepository podcastShowRepository) {
+                         com.podcastrelease.repository.PodcastShowRepository podcastShowRepository,
+                         com.podcastrelease.service.OtpService otpService) {
         this.episodeService = episodeService;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.podcastShowRepository = podcastShowRepository;
+        this.otpService = otpService;
     }
 
     @GetMapping("/login")
@@ -42,32 +45,76 @@ public class WebController {
 
     @GetMapping("/signup")
     public String signupPage(Model model) {
-        model.addAttribute("roles", com.podcastrelease.model.UserRole.values());
+        // Restrict public signup to PRODUCER and HOST (ADMIN must be assigned by Admin)
+        model.addAttribute("roles", new com.podcastrelease.model.UserRole[]{
+                com.podcastrelease.model.UserRole.PRODUCER,
+                com.podcastrelease.model.UserRole.HOST
+        });
         return "signup";
     }
 
     @PostMapping("/signup")
     public String registerUser(
             @RequestParam String username,
+            @RequestParam String email,
             @RequestParam String password,
             @RequestParam(defaultValue = "PRODUCER") com.podcastrelease.model.UserRole role,
             RedirectAttributes redirectAttributes) {
 
-        if (username == null || username.trim().isEmpty() || password == null || password.trim().isEmpty()) {
-            redirectAttributes.addFlashAttribute("errorMessage", "Username and password are required.");
+        if (username == null || username.trim().isEmpty() ||
+            email == null || email.trim().isEmpty() ||
+            password == null || password.trim().isEmpty()) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Username, email, and password are all required.");
+            return "redirect:/signup";
+        }
+
+        if (role == com.podcastrelease.model.UserRole.ADMIN) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Admin role cannot be selected via public registration.");
             return "redirect:/signup";
         }
 
         if (userRepository.existsByUsername(username.trim())) {
-            redirectAttributes.addFlashAttribute("errorMessage", "Username '" + username.trim() + "' is already taken. Please choose another.");
+            redirectAttributes.addFlashAttribute("errorMessage", "Username '" + username.trim() + "' is already taken.");
             return "redirect:/signup";
         }
 
-        User user = new User(username.trim(), passwordEncoder.encode(password), role);
+        if (userRepository.existsByEmail(email.trim())) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Email '" + email.trim() + "' is already registered.");
+            return "redirect:/signup";
+        }
+
+        User user = new User(username.trim(), email.trim(), passwordEncoder.encode(password), role);
+        user.setEnabled(false); // Disabled until OTP is verified
         userRepository.save(user);
 
-        redirectAttributes.addFlashAttribute("successMessage", "Account created successfully for '" + username.trim() + "'! Please sign in below.");
-        return "redirect:/login";
+        otpService.generateAndSendOtp(email.trim());
+
+        redirectAttributes.addFlashAttribute("email", email.trim());
+        redirectAttributes.addFlashAttribute("successMessage", "Account created! A 6-digit OTP verification code has been sent to " + email.trim());
+        return "redirect:/verify-otp?email=" + email.trim();
+    }
+
+    @GetMapping("/verify-otp")
+    public String verifyOtpPage(@RequestParam(required = false) String email, Model model) {
+        model.addAttribute("email", email);
+        return "verify-otp";
+    }
+
+    @PostMapping("/verify-otp")
+    public String processVerifyOtp(
+            @RequestParam String email,
+            @RequestParam String otpCode,
+            RedirectAttributes redirectAttributes) {
+
+        boolean verified = otpService.verifyOtp(email, otpCode);
+        if (verified) {
+            redirectAttributes.addFlashAttribute("successMessage", "Email verified successfully! Your account is now active. Please sign in below.");
+            return "redirect:/login";
+        } else {
+            redirectAttributes.addFlashAttribute("errorMessage", "Invalid or expired OTP verification code. Please check your code and try again.");
+            redirectAttributes.addFlashAttribute("email", email);
+            return "redirect:/verify-otp?email=" + email;
+        }
     }
 
     @GetMapping({"/", "/episodes", "/dashboard"})
@@ -187,12 +234,13 @@ public class WebController {
     public String transitionStatus(
             @PathVariable Long id,
             @RequestParam EpisodeStatus status,
+            @RequestParam(value = "reviewNotes", required = false) String reviewNotes,
             Authentication authentication,
             RedirectAttributes redirectAttributes) {
 
         try {
             String username = authentication != null ? authentication.getName() : null;
-            episodeService.updateStatus(id, status, username);
+            episodeService.updateStatus(id, status, username, reviewNotes);
             redirectAttributes.addFlashAttribute("successMessage", "Episode status updated to " + status);
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
