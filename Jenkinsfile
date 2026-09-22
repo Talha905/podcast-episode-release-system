@@ -4,7 +4,7 @@ pipeline {
     parameters {
         string(name: 'SERVER_PORT', defaultValue: '8083', description: 'Target application server port')
         choice(name: 'ENVIRONMENT', choices: ['dev', 'prod'], description: 'Target deployment environment profile')
-        string(name: 'TOMCAT_WEBAPPS_DIR', defaultValue: 'C:\\Program Files\\Apache Software Foundation\\Tomcat 10.1\\webapps', description: 'Path to target Tomcat webapps directory')
+        string(name: 'TOMCAT_WEBAPPS_DIR', defaultValue: 'C:\\xampp\\tomcat\\webapps', description: 'Path to target Tomcat webapps directory')
     }
 
     stages {
@@ -44,7 +44,7 @@ pipeline {
         stage('Deploy to Tomcat') {
             steps {
                 script {
-                    def tomcatDir = (params.TOMCAT_WEBAPPS_DIR && params.TOMCAT_WEBAPPS_DIR.trim()) ? params.TOMCAT_WEBAPPS_DIR.trim() : 'C:\\Program Files\\Apache Software Foundation\\Tomcat 10.1\\webapps'
+                    def tomcatDir = (params.TOMCAT_WEBAPPS_DIR && params.TOMCAT_WEBAPPS_DIR.trim()) ? params.TOMCAT_WEBAPPS_DIR.trim() : 'C:\\xampp\\tomcat\\webapps'
                     echo "Deploying target/podcast-release.war to Tomcat directory: ${tomcatDir}"
                     
                     if (isUnix()) {
