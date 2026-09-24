@@ -60,7 +60,8 @@ public class SecurityConfig {
                 .requestMatchers("/api/episodes/*/audit").hasAnyRole("ADMIN", "HOST")
                 .requestMatchers("/api/dashboard/summary").hasAnyRole("HOST", "ADMIN", "PRODUCER")
                 .requestMatchers("/api/episodes/**").hasAnyRole("PRODUCER", "HOST", "ADMIN")
-                .requestMatchers("/shows/**", "/platforms/**", "/dashboard").hasAnyRole("HOST", "ADMIN", "PRODUCER")
+                .requestMatchers("/platforms/**").hasAnyRole("PRODUCER", "ADMIN")
+                .requestMatchers("/shows/**", "/dashboard").hasAnyRole("HOST", "ADMIN", "PRODUCER")
                 .anyRequest().authenticated()
             )
             .formLogin(form -> form

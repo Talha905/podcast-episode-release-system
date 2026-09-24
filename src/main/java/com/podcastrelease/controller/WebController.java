@@ -87,10 +87,11 @@ public class WebController {
         user.setEnabled(false); // Disabled until OTP is verified
         userRepository.save(user);
 
-        otpService.generateAndSendOtp(email.trim());
+        String otpCode = otpService.generateAndSendOtp(email.trim());
 
         redirectAttributes.addFlashAttribute("email", email.trim());
-        redirectAttributes.addFlashAttribute("successMessage", "Account created! A 6-digit OTP verification code has been sent to " + email.trim());
+        redirectAttributes.addFlashAttribute("latestOtp", otpCode);
+        redirectAttributes.addFlashAttribute("successMessage", "Account created! A 6-digit OTP verification code has been dispatched to " + email.trim());
         return "redirect:/verify-otp?email=" + email.trim();
     }
 

@@ -53,6 +53,9 @@
             <div th:if="${errorMessage}" class="alert alert-danger rounded-3 mb-4 small" role="alert">
                 <i class="bi bi-exclamation-triangle-fill me-2"></i><span th:text="${errorMessage}"></span>
             </div>
+            <div th:if="${latestOtp}" class="alert alert-info rounded-3 mb-4 small text-center" role="alert">
+                <i class="bi bi-shield-lock-fill me-2 text-primary"></i><strong>Verification Code (Dev/Helper):</strong> <span class="badge bg-primary fs-6 ms-1 px-3 py-1" th:text="${latestOtp}">123456</span>
+            </div>
 
             <form th:action="@{/verify-otp}" method="post">
                 <div class="mb-4 text-center">

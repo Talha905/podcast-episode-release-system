@@ -83,41 +83,7 @@ public class DataInitializer implements CommandLineRunner {
             show2 = podcastShowRepository.findBySlug("devops-uncut").orElse(null);
         }
 
-        // Seed Platform Accounts
-        if (platformAccountRepository.count() == 0) {
-            platformAccountRepository.save(new PlatformAccount(
-                    "YouTube Podcasts Channel",
-                    PlatformAccount.PlatformType.YOUTUBE,
-                    "https://upload.youtube.com/my_podcast_channel",
-                    "sample_yt_oauth_token_sec_key",
-                    true
-            ));
 
-            platformAccountRepository.save(new PlatformAccount(
-                    "Buzzsprout Hosting Account",
-                    PlatformAccount.PlatformType.BUZZSPROUT,
-                    "https://api.buzzsprout.com/v1/episodes",
-                    "bz_api_key_88392019481029",
-                    true
-            ));
-        }
-
-        // Seed Webhook Configs
-        if (webhookConfigRepository.count() == 0) {
-            webhookConfigRepository.save(new WebhookConfig(
-                    "Slack Release Notifications",
-                    WebhookConfig.WebhookType.SLACK,
-                    "https://example.com/webhooks/slack-release-alerts",
-                    true
-            ));
-
-            webhookConfigRepository.save(new WebhookConfig(
-                    "Discord Alert Channel",
-                    WebhookConfig.WebhookType.DISCORD,
-                    "https://example.com/webhooks/discord-release-alerts",
-                    true
-            ));
-        }
 
         if (userRepository.count() == 0) {
             User producer = userRepository.save(new User("producer", "producer@podcastrelease.com", passwordEncoder.encode("password123"), UserRole.PRODUCER));
