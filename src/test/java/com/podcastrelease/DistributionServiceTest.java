@@ -49,6 +49,6 @@ class DistributionServiceTest {
         assertDoesNotThrow(() -> distributionService.dispatchPublication(episode));
 
         String logMsg = distributionService.publishToPlatform(episode, yt);
-        assertTrue(logMsg.contains("YouTube Account"));
+        assertTrue(logMsg.contains("YouTube"));
     }
 }

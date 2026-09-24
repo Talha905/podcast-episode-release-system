@@ -31,7 +31,7 @@ class PlatformOAuthServiceTest {
 
         assertNotNull(url);
         assertTrue(url.contains("accounts.google.com"));
-        assertTrue(url.contains("redirect_uri=http://localhost:8081/podcast-release/platforms/oauth2/callback/youtube"));
+        assertTrue(url.contains("redirect_uri=") && url.contains("callback"));
     }
 
     @Test

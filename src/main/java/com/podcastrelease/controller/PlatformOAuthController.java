@@ -41,10 +41,12 @@ public class PlatformOAuthController {
     @GetMapping("/callback/{platform}")
     public String oauthCallback(@PathVariable String platform,
                                 @RequestParam(value = "code", required = false) String code,
+                                HttpServletRequest request,
                                 RedirectAttributes redirectAttributes) {
         try {
             PlatformAccount.PlatformType platformType = PlatformAccount.PlatformType.valueOf(platform.toUpperCase());
-            PlatformAccount account = oAuthService.handleOAuthCallback(platformType, code != null ? code : "demo_code");
+            String baseUrl = getBaseUrl(request);
+            PlatformAccount account = oAuthService.handleOAuthCallback(platformType, code != null ? code : "demo_code", baseUrl);
 
             redirectAttributes.addFlashAttribute("successMessage",
                     "Successfully connected " + platformType.name() + " account (" + account.getConnectedAccountName() + ") via 1-Click OAuth 2.0!");
