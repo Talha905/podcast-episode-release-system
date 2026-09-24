@@ -83,4 +83,18 @@ class EpisodeControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(view().name("episodes"));
     }
+
+    @Test
+    @WithMockUser(username = "producer", roles = {"PRODUCER"})
+    void getEpisodeDetailView_rendersDetailHtmlWithoutErrors() throws Exception {
+        Episode episode = new Episode("Detail View Test Ep", "Description text", "/audio/sample.mp3", LocalDate.now());
+        episode.setStatus(EpisodeStatus.VALIDATED);
+        episode.setReviewNotes("Looks good!");
+        Episode saved = episodeRepository.save(episode);
+
+        mockMvc.perform(get("/episodes/" + saved.getId()))
+                .andExpect(status().isOk())
+                .andExpect(view().name("detail"))
+                .andExpect(model().attributeExists("episode", "auditLogs", "statuses"));
+    }
 }
