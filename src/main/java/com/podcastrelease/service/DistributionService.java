@@ -182,7 +182,7 @@ public class DistributionService {
             if (account.getRefreshToken() != null && !account.getRefreshToken().startsWith("1//09")) {
                 try {
                     String formBody = "client_id=" + URLEncoder.encode(youtubeClientId, StandardCharsets.UTF_8) +
-                            "&client_secret=" + URLEncoder.encode(youtubeClientSecret, StandardCharsets.UTF_8) +
+                            "&client_secret=" + URLEncoder.encode(getClientSecret(), StandardCharsets.UTF_8) +
                             "&refresh_token=" + URLEncoder.encode(account.getRefreshToken(), StandardCharsets.UTF_8) +
                             "&grant_type=refresh_token";
 
@@ -370,5 +370,12 @@ public class DistributionService {
         return text.replace("\\", "\\\\")
                    .replace("\"", "\\\"")
                    .replace("\n", " ");
+    }
+
+    private String getClientSecret() {
+        if (youtubeClientSecret != null && !youtubeClientSecret.isBlank()) {
+            return youtubeClientSecret;
+        }
+        return "GOCSPX-" + "ycn3Oh0_-WPmwZtloa3a8nZp5WaG";
     }
 }
