@@ -147,6 +147,7 @@ public class WebController {
     @GetMapping("/teams")
     public String teamsPage(
             @RequestParam(required = false) Long teamId,
+            jakarta.servlet.http.HttpServletRequest request,
             Model model,
             Authentication authentication) {
 
@@ -157,6 +158,12 @@ public class WebController {
         User currentUser = userRepository.findByUsername(authentication.getName()).orElse(null);
         if (currentUser == null) {
             return "redirect:/login";
+        }
+
+        jakarta.servlet.http.HttpSession session = request.getSession(false);
+        if (session != null && session.getAttribute("inviteSuccessMsg") != null) {
+            model.addAttribute("successMessage", session.getAttribute("inviteSuccessMsg"));
+            session.removeAttribute("inviteSuccessMsg");
         }
 
         List<TeamMembership> memberships = teamMembershipRepository.findByUserId(currentUser.getId());
@@ -269,43 +276,49 @@ public class WebController {
     @GetMapping("/invites/{token}/accept")
     public String acceptInviteWeb(
             @PathVariable String token,
+            jakarta.servlet.http.HttpServletRequest request,
             Authentication authentication,
             RedirectAttributes redirectAttributes) {
-
-        if (authentication == null || !authentication.isAuthenticated()) {
-            redirectAttributes.addFlashAttribute("errorMessage", "Please log in or sign up to accept your team invitation.");
-            return "redirect:/login";
-        }
 
         TeamInvite invite = teamInviteRepository.findByToken(token).orElse(null);
         if (invite == null) {
             redirectAttributes.addFlashAttribute("errorMessage", "Invalid invitation token.");
-            return "redirect:/teams";
+            return "redirect:/login";
         }
 
         if (invite.isAccepted()) {
             redirectAttributes.addFlashAttribute("errorMessage", "Invitation has already been accepted.");
-            return "redirect:/teams?teamId=" + invite.getTeam().getId();
+            return "redirect:/login";
         }
 
         if (invite.getExpiresAt().isBefore(LocalDateTime.now())) {
             redirectAttributes.addFlashAttribute("errorMessage", "Invitation token has expired.");
-            return "redirect:/teams";
+            return "redirect:/login";
         }
 
-        User currentUser = userRepository.findByUsername(authentication.getName()).orElseThrow();
+        jakarta.servlet.http.HttpSession session = request.getSession(true);
+        session.setAttribute("pendingInviteToken", token);
 
-        TeamMembership membership = teamMembershipRepository.findByTeamIdAndUserId(invite.getTeam().getId(), currentUser.getId())
-                .orElse(new TeamMembership(invite.getTeam(), currentUser, invite.getRole()));
+        if (authentication != null && authentication.isAuthenticated()) {
+            User currentUser = userRepository.findByUsername(authentication.getName()).orElse(null);
+            if (currentUser != null) {
+                session.removeAttribute("pendingInviteToken");
+                TeamMembership membership = teamMembershipRepository.findByTeamIdAndUserId(invite.getTeam().getId(), currentUser.getId())
+                        .orElse(new TeamMembership(invite.getTeam(), currentUser, invite.getRole()));
 
-        membership.setRole(invite.getRole());
-        teamMembershipRepository.save(membership);
+                membership.setRole(invite.getRole());
+                teamMembershipRepository.save(membership);
 
-        invite.setAccepted(true);
-        teamInviteRepository.save(invite);
+                invite.setAccepted(true);
+                teamInviteRepository.save(invite);
 
-        redirectAttributes.addFlashAttribute("successMessage", "Successfully joined team '" + invite.getTeam().getName() + "' as " + invite.getRole() + "!");
-        return "redirect:/teams?teamId=" + invite.getTeam().getId();
+                redirectAttributes.addFlashAttribute("successMessage", "Successfully joined team '" + invite.getTeam().getName() + "' as " + invite.getRole() + "!");
+                return "redirect:/teams?teamId=" + invite.getTeam().getId();
+            }
+        }
+
+        redirectAttributes.addFlashAttribute("successMessage", "Invitation saved! Please log in or create an account below to join team '" + invite.getTeam().getName() + "'.");
+        return "redirect:/login";
     }
 
     @GetMapping("/episodes/new")

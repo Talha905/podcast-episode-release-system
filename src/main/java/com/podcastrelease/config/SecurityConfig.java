@@ -1,5 +1,6 @@
 package com.podcastrelease.config;
 
+import com.podcastrelease.security.CustomAuthenticationSuccessHandler;
 import com.podcastrelease.security.CustomUserDetailsService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -18,9 +19,12 @@ import org.springframework.security.web.SecurityFilterChain;
 public class SecurityConfig {
 
     private final CustomUserDetailsService userDetailsService;
+    private final CustomAuthenticationSuccessHandler customAuthenticationSuccessHandler;
 
-    public SecurityConfig(CustomUserDetailsService userDetailsService) {
+    public SecurityConfig(CustomUserDetailsService userDetailsService,
+                          CustomAuthenticationSuccessHandler customAuthenticationSuccessHandler) {
         this.userDetailsService = userDetailsService;
+        this.customAuthenticationSuccessHandler = customAuthenticationSuccessHandler;
     }
 
     @Bean
@@ -51,14 +55,14 @@ public class SecurityConfig {
                 .frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin)
             )
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/login", "/signup", "/verify-otp", "/css/**", "/js/**", "/h2-console/**", "/api/auth/login", "/api/auth/register", "/api/invites/*/accept", "/api/jenkins/callback", "/api/episodes/*/jenkins-callback", "/feed.xml", "/rss", "/shows/*/feed.xml", "/platforms/oauth2/callback/**").permitAll()
+                .requestMatchers("/login", "/signup", "/verify-otp", "/invites/*/accept", "/css/**", "/js/**", "/h2-console/**", "/api/auth/login", "/api/auth/register", "/api/invites/*/accept", "/api/jenkins/callback", "/api/episodes/*/jenkins-callback", "/feed.xml", "/rss", "/shows/*/feed.xml", "/platforms/oauth2/callback/**").permitAll()
                 .requestMatchers("/admin/**").hasRole("ADMIN")
                 .requestMatchers("/api/teams/**").authenticated()
                 .anyRequest().authenticated()
             )
             .formLogin(form -> form
                 .loginPage("/login")
-                .defaultSuccessUrl("/", true)
+                .successHandler(customAuthenticationSuccessHandler)
                 .permitAll()
             )
             .httpBasic(httpBasic -> {})

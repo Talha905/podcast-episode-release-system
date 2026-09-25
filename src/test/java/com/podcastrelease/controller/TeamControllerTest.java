@@ -10,6 +10,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockHttpSession;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -48,6 +50,9 @@ class TeamControllerTest {
     @Autowired
     private AuditLogRepository auditLogRepository;
 
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
     private User ownerUser;
     private User memberUser;
     private User outsiderUser;
@@ -64,15 +69,15 @@ class TeamControllerTest {
         teamRepository.deleteAll();
         userRepository.deleteAll();
 
-        ownerUser = userRepository.save(new User("teamowner", "owner@example.com", "pass123"));
+        ownerUser = userRepository.save(new User("teamowner", "owner@example.com", passwordEncoder.encode("pass123")));
         ownerUser.setEnabled(true);
         userRepository.save(ownerUser);
 
-        memberUser = userRepository.save(new User("teammember", "member@example.com", "pass123"));
+        memberUser = userRepository.save(new User("teammember", "member@example.com", passwordEncoder.encode("pass123")));
         memberUser.setEnabled(true);
         userRepository.save(memberUser);
 
-        outsiderUser = userRepository.save(new User("outsider", "outsider@example.com", "pass123"));
+        outsiderUser = userRepository.save(new User("outsider", "outsider@example.com", passwordEncoder.encode("pass123")));
         outsiderUser.setEnabled(true);
         userRepository.save(outsiderUser);
 
@@ -161,5 +166,54 @@ class TeamControllerTest {
         mockMvc.perform(get("/invites/" + invite.getToken() + "/accept"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(flash().attribute("successMessage", "Successfully joined team 'Alpha Team' as RELEASE_MANAGER!"));
+    }
+
+    @Test
+    void unauthenticatedUser_clickInviteLink_savesTokenInSessionAndRedirectsToLogin() throws Exception {
+        // Owner creates invite
+        com.podcastrelease.model.TeamInvite invite = new com.podcastrelease.model.TeamInvite(sampleTeam, "newuser@example.com", TeamRole.EDITOR, "token123", ownerUser);
+        teamInviteRepository.save(invite);
+
+        MockHttpSession session = new MockHttpSession();
+
+        // 1. Unauthenticated user clicks invite link
+        mockMvc.perform(get("/invites/token123/accept").session(session))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/login"))
+                .andExpect(flash().attributeExists("successMessage"));
+
+        // 2. Token is saved in session
+        org.junit.jupiter.api.Assertions.assertEquals("token123", session.getAttribute("pendingInviteToken"));
+
+        // 3. User logs in with session containing token
+        mockMvc.perform(post("/login").session(session).with(csrf())
+                        .param("username", "outsider")
+                        .param("password", "pass123"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/teams?teamId=" + sampleTeam.getId()));
+
+        // 4. Verify outsider is now a member with EDITOR role
+        var membership = teamMembershipRepository.findByTeamIdAndUserId(sampleTeam.getId(), outsiderUser.getId());
+        org.junit.jupiter.api.Assertions.assertTrue(membership.isPresent());
+        org.junit.jupiter.api.Assertions.assertEquals(TeamRole.EDITOR, membership.get().getRole());
+    }
+
+    @Test
+    void invalidOrAlreadyAcceptedInviteLink_failsSafelyWithErrorMessage() throws Exception {
+        // 1. Invalid token
+        mockMvc.perform(get("/invites/invalid-token-xyz/accept"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/login"))
+                .andExpect(flash().attribute("errorMessage", "Invalid invitation token."));
+
+        // 2. Already accepted token
+        com.podcastrelease.model.TeamInvite invite = new com.podcastrelease.model.TeamInvite(sampleTeam, "used@example.com", TeamRole.CREATOR, "usedtoken123", ownerUser);
+        invite.setAccepted(true);
+        teamInviteRepository.save(invite);
+
+        mockMvc.perform(get("/invites/usedtoken123/accept"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/login"))
+                .andExpect(flash().attribute("errorMessage", "Invitation has already been accepted."));
     }
 }
