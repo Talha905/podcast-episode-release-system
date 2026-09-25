@@ -96,9 +96,9 @@
                             </td>
                             <td>
                                 <span class="badge rounded-pill px-3 py-1.5"
-                                      th:classappend="${user.role.name() == 'ADMIN' ? 'bg-danger-subtle text-danger border border-danger-subtle' : (user.role.name() == 'HOST' ? 'bg-info-subtle text-info border border-info-subtle' : 'bg-primary-subtle text-primary border border-primary-subtle')}">
-                                    <i class="bi me-1" th:classappend="${user.role.name() == 'ADMIN' ? 'bi-shield-lock' : (user.role.name() == 'HOST' ? 'bi-mic' : 'bi-sliders')}"></i>
-                                    <span th:text="${user.role}">ROLE</span>
+                                      th:classappend="${user.platformRole != null && user.platformRole.name() == 'ADMIN' ? 'bg-danger-subtle text-danger border border-danger-subtle' : 'bg-primary-subtle text-primary border border-primary-subtle'}">
+                                    <i class="bi me-1" th:classappend="${user.platformRole != null && user.platformRole.name() == 'ADMIN' ? 'bi-shield-lock' : 'bi-person'}"></i>
+                                    <span th:text="${user.platformRole != null ? user.platformRole : 'STANDARD'}">ROLE</span>
                                 </span>
                             </td>
                             <td>
@@ -120,8 +120,9 @@
                                 <div class="d-flex gap-1 justify-content-end">
                                     <!-- Role Change Modal Trigger / Form -->
                                     <form th:action="@{/admin/users/{id}/role(id=${user.id})}" method="post" class="d-inline">
-                                        <select name="role" class="form-select form-select-sm d-inline-block w-auto" onchange="this.form.submit()">
-                                            <option th:each="r : ${roles}" th:value="${r}" th:text="${r}" th:selected="${r == user.role}"></option>
+                                        <select name="platformRole" class="form-select form-select-sm d-inline-block w-auto" onchange="this.form.submit()">
+                                            <option value="" th:selected="${user.platformRole == null}">STANDARD</option>
+                                            <option th:each="r : ${roles}" th:value="${r}" th:text="${r}" th:selected="${r == user.platformRole}"></option>
                                         </select>
                                     </form>
 

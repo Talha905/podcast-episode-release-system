@@ -58,7 +58,7 @@
             <div class="brand-header">
                 <div class="brand-icon"><i class="bi bi-person-plus-fill"></i></div>
                 <h4 class="fw-bold mb-1">Create an Account</h4>
-                <p class="text-white-50 mb-0 small">Register a new user account for the release system</p>
+                <p class="text-white-50 mb-0 small">Register a new account for the release system</p>
             </div>
             <div class="card-body p-4">
                 <div th:if="${errorMessage}" class="alert alert-danger d-flex align-items-center mb-4" role="alert">
@@ -79,26 +79,16 @@
                         <label for="email" class="form-label fw-semibold">Email Address *</label>
                         <div class="input-group">
                             <span class="input-group-text bg-white text-muted"><i class="bi bi-envelope"></i></span>
-                            <input type="email" id="email" name="email" class="form-control" placeholder="name@company.com" required>
+                            <input type="email" id="email" name="email" class="form-control" placeholder="name@example.com" required>
                         </div>
                         <div class="form-text small">An OTP verification code will be sent to this email address.</div>
                     </div>
 
-                    <div class="mb-3">
+                    <div class="mb-4">
                         <label for="password" class="form-label fw-semibold">Password *</label>
                         <div class="input-group">
                             <span class="input-group-text bg-white text-muted"><i class="bi bi-lock"></i></span>
                             <input type="password" id="password" name="password" class="form-control" placeholder="Enter password" required>
-                        </div>
-                    </div>
-
-                    <div class="mb-4">
-                        <label for="role" class="form-label fw-semibold">User Role *</label>
-                        <div class="input-group">
-                            <span class="input-group-text bg-white text-muted"><i class="bi bi-shield-check"></i></span>
-                            <select id="role" name="role" class="form-select" required>
-                                <option th:each="r : ${roles}" th:value="${r}" th:text="${r + ' (' + (r.name() == 'PRODUCER' ? 'Create drafts, upload audio, submit for validation' : 'Review audio, approve/publish episodes') + ')'}"></option>
-                            </select>
                         </div>
                     </div>
 

@@ -41,6 +41,18 @@ public class Episode {
     private User approvedBy;
 
     @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "claimed_by")
+    private User claimedBy;
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "assigned_to")
+    private User assignedTo;
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "team_id")
+    private Team team;
+
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "podcast_show_id")
     private PodcastShow podcastShow;
 
@@ -50,6 +62,9 @@ public class Episode {
     private Integer durationSeconds;
     private String formattedDuration;
     private Long fileSizeBytes;
+
+    private String youtubeVideoId;
+    private String youtubeVideoUrl;
 
     private LocalDateTime createdAt = LocalDateTime.now();
     private LocalDateTime updatedAt = LocalDateTime.now();
@@ -90,6 +105,15 @@ public class Episode {
     public User getApprovedBy() { return approvedBy; }
     public void setApprovedBy(User approvedBy) { this.approvedBy = approvedBy; }
 
+    public User getClaimedBy() { return claimedBy; }
+    public void setClaimedBy(User claimedBy) { this.claimedBy = claimedBy; }
+
+    public User getAssignedTo() { return assignedTo; }
+    public void setAssignedTo(User assignedTo) { this.assignedTo = assignedTo; }
+
+    public Team getTeam() { return team; }
+    public void setTeam(Team team) { this.team = team; }
+
     public PodcastShow getPodcastShow() { return podcastShow; }
     public void setPodcastShow(PodcastShow podcastShow) { this.podcastShow = podcastShow; }
 
@@ -104,6 +128,12 @@ public class Episode {
 
     public Long getFileSizeBytes() { return fileSizeBytes; }
     public void setFileSizeBytes(Long fileSizeBytes) { this.fileSizeBytes = fileSizeBytes; }
+
+    public String getYoutubeVideoId() { return youtubeVideoId; }
+    public void setYoutubeVideoId(String youtubeVideoId) { this.youtubeVideoId = youtubeVideoId; }
+
+    public String getYoutubeVideoUrl() { return youtubeVideoUrl; }
+    public void setYoutubeVideoUrl(String youtubeVideoUrl) { this.youtubeVideoUrl = youtubeVideoUrl; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

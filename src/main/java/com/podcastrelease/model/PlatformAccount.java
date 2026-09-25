@@ -31,6 +31,10 @@ public class PlatformAccount {
     private String connectedAccountAvatar;
     private boolean enabled;
 
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "team_id")
+    private Team team;
+
     private LocalDateTime createdAt;
 
     public PlatformAccount() {
@@ -145,6 +149,14 @@ public class PlatformAccount {
 
     public void setEnabled(boolean enabled) {
         this.enabled = enabled;
+    }
+
+    public Team getTeam() {
+        return team;
+    }
+
+    public void setTeam(Team team) {
+        this.team = team;
     }
 
     public LocalDateTime getCreatedAt() {

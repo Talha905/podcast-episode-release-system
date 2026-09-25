@@ -14,6 +14,9 @@ public class AuditLog {
     @Column(nullable = false)
     private Long episodeId;
 
+    @Column(name = "team_id")
+    private Long teamId;
+
     @Column(nullable = false)
     private String action;
 
@@ -27,7 +30,12 @@ public class AuditLog {
     public AuditLog() {}
 
     public AuditLog(Long episodeId, String action, User performedBy) {
+        this(episodeId, null, action, performedBy);
+    }
+
+    public AuditLog(Long episodeId, Long teamId, String action, User performedBy) {
         this.episodeId = episodeId;
+        this.teamId = teamId;
         this.action = action;
         this.performedBy = performedBy;
         this.timestamp = LocalDateTime.now();
@@ -38,6 +46,9 @@ public class AuditLog {
 
     public Long getEpisodeId() { return episodeId; }
     public void setEpisodeId(Long episodeId) { this.episodeId = episodeId; }
+
+    public Long getTeamId() { return teamId; }
+    public void setTeamId(Long teamId) { this.teamId = teamId; }
 
     public String getAction() { return action; }
     public void setAction(String action) { this.action = action; }

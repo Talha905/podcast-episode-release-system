@@ -9,4 +9,6 @@ import java.util.List;
 @Repository
 public interface PlatformAccountRepository extends JpaRepository<PlatformAccount, Long> {
     List<PlatformAccount> findByEnabledTrue();
+    List<PlatformAccount> findByTeamId(Long teamId);
+    List<PlatformAccount> findByTeamIdAndEnabledTrue(Long teamId);
 }

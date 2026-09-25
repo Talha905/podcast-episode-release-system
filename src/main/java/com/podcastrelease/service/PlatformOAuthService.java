@@ -68,7 +68,7 @@ public class PlatformOAuthService {
     }
 
     public PlatformAccount handleOAuthCallback(PlatformAccount.PlatformType platformType, String code) {
-        return handleOAuthCallback(platformType, code, "http://localhost:8081/podcast-release");
+        return handleOAuthCallback(platformType, code, "http://localhost:8005");
     }
 
     public PlatformAccount handleOAuthCallback(PlatformAccount.PlatformType platformType, String code, String baseUrl) {

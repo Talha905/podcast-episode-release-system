@@ -2,12 +2,7 @@ package com.podcastrelease;
 
 import com.podcastrelease.model.User;
 import com.podcastrelease.model.UserOtp;
-import com.podcastrelease.model.UserRole;
-import com.podcastrelease.repository.AuditLogRepository;
-import com.podcastrelease.repository.EpisodeRepository;
-import com.podcastrelease.repository.PodcastShowMemberRepository;
-import com.podcastrelease.repository.UserOtpRepository;
-import com.podcastrelease.repository.UserRepository;
+import com.podcastrelease.repository.*;
 import com.podcastrelease.service.OtpService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -39,6 +34,15 @@ class OtpServiceTest {
     @Autowired
     private PodcastShowMemberRepository podcastShowMemberRepository;
 
+    @Autowired
+    private TeamInviteRepository teamInviteRepository;
+
+    @Autowired
+    private TeamMembershipRepository teamMembershipRepository;
+
+    @Autowired
+    private TeamRepository teamRepository;
+
     private User testUser;
 
     @BeforeEach
@@ -46,10 +50,13 @@ class OtpServiceTest {
         auditLogRepository.deleteAll();
         episodeRepository.deleteAll();
         podcastShowMemberRepository.deleteAll();
+        teamInviteRepository.deleteAll();
+        teamMembershipRepository.deleteAll();
+        teamRepository.deleteAll();
         userOtpRepository.deleteAll();
         userRepository.deleteAll();
 
-        testUser = new User("otpuser", "otpuser@example.com", "pass123", UserRole.PRODUCER);
+        testUser = new User("otpuser", "otpuser@example.com", "pass123");
         testUser.setEnabled(false);
         testUser = userRepository.save(testUser);
     }

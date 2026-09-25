@@ -3,6 +3,8 @@ package com.podcastrelease.controller;
 import com.podcastrelease.model.AuditLog;
 import com.podcastrelease.model.Episode;
 import com.podcastrelease.model.EpisodeStatus;
+import com.podcastrelease.model.User;
+import com.podcastrelease.repository.UserRepository;
 import com.podcastrelease.service.EpisodeService;
 import jakarta.validation.Valid;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -20,9 +22,11 @@ import java.util.Map;
 public class EpisodeController {
 
     private final EpisodeService episodeService;
+    private final UserRepository userRepository;
 
-    public EpisodeController(EpisodeService episodeService) {
+    public EpisodeController(EpisodeService episodeService, UserRepository userRepository) {
         this.episodeService = episodeService;
+        this.userRepository = userRepository;
     }
 
     @PostMapping("/episodes")
@@ -46,8 +50,9 @@ public class EpisodeController {
     }
 
     @GetMapping("/episodes/{id}")
-    public ResponseEntity<Episode> getOne(@PathVariable Long id) {
-        return ResponseEntity.ok(episodeService.findById(id));
+    public ResponseEntity<Episode> getOne(@PathVariable Long id, Authentication authentication) {
+        User currentUser = getCurrentUser(authentication);
+        return ResponseEntity.ok(episodeService.findById(id, currentUser));
     }
 
     @PutMapping("/episodes/{id}")
@@ -61,6 +66,24 @@ public class EpisodeController {
         return ResponseEntity.ok(saved);
     }
 
+    @PostMapping("/episodes/{id}/claim")
+    public ResponseEntity<Episode> claim(@PathVariable Long id, Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        Episode claimed = episodeService.claimEpisode(id, authentication.getName());
+        return ResponseEntity.ok(claimed);
+    }
+
+    @PostMapping("/episodes/{id}/unclaim")
+    public ResponseEntity<Episode> unclaim(@PathVariable Long id, Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        Episode unclaimed = episodeService.unclaimEpisode(id, authentication.getName());
+        return ResponseEntity.ok(unclaimed);
+    }
+
     @PatchMapping("/episodes/{id}/status")
     public ResponseEntity<Episode> updateStatus(
             @PathVariable Long id,
@@ -68,6 +91,8 @@ public class EpisodeController {
             Authentication authentication) {
 
         String statusStr = body.get("status");
+        String reviewNotes = body.get("reviewNotes");
+
         if (statusStr == null || statusStr.trim().isEmpty()) {
             throw new IllegalArgumentException("Field 'status' is required");
         }
@@ -75,7 +100,7 @@ public class EpisodeController {
         EpisodeStatus targetStatus = EpisodeStatus.valueOf(statusStr.toUpperCase());
         String username = authentication != null ? authentication.getName() : null;
 
-        Episode updated = episodeService.updateStatus(id, targetStatus, username);
+        Episode updated = episodeService.updateStatus(id, targetStatus, username, reviewNotes);
         return ResponseEntity.ok(updated);
     }
 
@@ -85,7 +110,9 @@ public class EpisodeController {
     }
 
     @GetMapping("/episodes/{id}/audit")
-    public ResponseEntity<List<AuditLog>> getAuditLogs(@PathVariable Long id) {
+    public ResponseEntity<List<AuditLog>> getAuditLogs(@PathVariable Long id, Authentication authentication) {
+        User currentUser = getCurrentUser(authentication);
+        episodeService.findById(id, currentUser); // Enforces team security
         return ResponseEntity.ok(episodeService.getAuditLogs(id));
     }
 
@@ -97,5 +124,10 @@ public class EpisodeController {
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, String>> handleIllegalArgument(IllegalArgumentException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", ex.getMessage()));
+    }
+
+    private User getCurrentUser(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) return null;
+        return userRepository.findByUsername(authentication.getName()).orElse(null);
     }
 }

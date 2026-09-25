@@ -21,7 +21,7 @@ public class PodcastShowMember {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private UserRole roleInShow; // PRODUCER or HOST
+    private TeamRole roleInShow;
 
     private LocalDateTime assignedAt;
 
@@ -29,7 +29,7 @@ public class PodcastShowMember {
         this.assignedAt = LocalDateTime.now();
     }
 
-    public PodcastShowMember(PodcastShow podcastShow, User user, UserRole roleInShow) {
+    public PodcastShowMember(PodcastShow podcastShow, User user, TeamRole roleInShow) {
         this();
         this.podcastShow = podcastShow;
         this.user = user;
@@ -60,11 +60,11 @@ public class PodcastShowMember {
         this.user = user;
     }
 
-    public UserRole getRoleInShow() {
+    public TeamRole getRoleInShow() {
         return roleInShow;
     }
 
-    public void setRoleInShow(UserRole roleInShow) {
+    public void setRoleInShow(TeamRole roleInShow) {
         this.roleInShow = roleInShow;
     }
 

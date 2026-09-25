@@ -32,20 +32,16 @@ class SecurityRBACIntegrationTest {
     }
 
     @Test
-    @WithMockUser(username = "host", roles = {"HOST"})
-    void hostRole_createEpisode_returns403Forbidden() throws Exception {
-        Episode episode = new Episode("Forbidden Ep", "Desc", "http://audio.mp3", LocalDate.now());
-
-        mockMvc.perform(post("/api/episodes")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(episode)))
+    @WithMockUser(username = "user", roles = {"USER"})
+    void userRole_accessAdminEndpoint_returns403Forbidden() throws Exception {
+        mockMvc.perform(get("/admin/users"))
                 .andExpect(status().isForbidden());
     }
 
     @Test
-    @WithMockUser(username = "producer", roles = {"PRODUCER"})
-    void producerRole_createEpisode_returns201Created() throws Exception {
-        Episode episode = new Episode("Producer Ep", "Desc", "http://audio.mp3", LocalDate.now());
+    @WithMockUser(username = "user", roles = {"USER"})
+    void userRole_createEpisode_returns201Created() throws Exception {
+        Episode episode = new Episode("User Ep", "Desc", "http://audio.mp3", LocalDate.now());
 
         mockMvc.perform(post("/api/episodes")
                 .contentType(MediaType.APPLICATION_JSON)

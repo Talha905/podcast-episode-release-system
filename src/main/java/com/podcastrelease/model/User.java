@@ -2,7 +2,6 @@ package com.podcastrelease.model;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 
 @Entity
 @Table(name = "users")
@@ -22,10 +21,9 @@ public class User {
     @Column(nullable = false)
     private String passwordHash;
 
-    @NotNull
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private UserRole role;
+    @Column(nullable = true)
+    private PlatformRole platformRole;
 
     private boolean enabled;
 
@@ -33,16 +31,20 @@ public class User {
         this.enabled = true;
     }
 
-    public User(String username, String passwordHash, UserRole role) {
+    public User(String username, String passwordHash, PlatformRole platformRole) {
         this();
         this.username = username;
         this.passwordHash = passwordHash;
-        this.role = role;
+        this.platformRole = platformRole;
     }
 
-    public User(String username, String email, String passwordHash, UserRole role) {
-        this(username, passwordHash, role);
+    public User(String username, String email, String passwordHash, PlatformRole platformRole) {
+        this(username, passwordHash, platformRole);
         this.email = email;
+    }
+
+    public User(String username, String email, String passwordHash) {
+        this(username, email, passwordHash, null);
     }
 
     public Long getId() { return id; }
@@ -57,8 +59,8 @@ public class User {
     public String getPasswordHash() { return passwordHash; }
     public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
 
-    public UserRole getRole() { return role; }
-    public void setRole(UserRole role) { this.role = role; }
+    public PlatformRole getPlatformRole() { return platformRole; }
+    public void setPlatformRole(PlatformRole platformRole) { this.platformRole = platformRole; }
 
     public boolean isEnabled() { return enabled; }
     public void setEnabled(boolean enabled) { this.enabled = enabled; }

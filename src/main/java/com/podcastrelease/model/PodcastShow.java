@@ -25,6 +25,10 @@ public class PodcastShow {
     private String language;
     private String coverImageUrl;
 
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "team_id")
+    private Team team;
+
     private LocalDateTime createdAt;
 
     public PodcastShow() {
@@ -131,6 +135,14 @@ public class PodcastShow {
 
     public void setCoverImageUrl(String coverImageUrl) {
         this.coverImageUrl = coverImageUrl;
+    }
+
+    public Team getTeam() {
+        return team;
+    }
+
+    public void setTeam(Team team) {
+        this.team = team;
     }
 
     public LocalDateTime getCreatedAt() {

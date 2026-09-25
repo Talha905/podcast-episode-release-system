@@ -3,8 +3,9 @@ package com.podcastrelease;
 import com.podcastrelease.model.AuditLog;
 import com.podcastrelease.model.Episode;
 import com.podcastrelease.model.EpisodeStatus;
-import com.podcastrelease.repository.AuditLogRepository;
-import com.podcastrelease.repository.EpisodeRepository;
+import com.podcastrelease.model.PlatformRole;
+import com.podcastrelease.model.User;
+import com.podcastrelease.repository.*;
 import com.podcastrelease.service.EpisodeService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -30,16 +31,28 @@ class EpisodeServiceTest {
     private AuditLogRepository auditLogRepository;
 
     @Autowired
-    private com.podcastrelease.repository.UserRepository userRepository;
+    private UserRepository userRepository;
+
+    @Autowired
+    private TeamInviteRepository teamInviteRepository;
+
+    @Autowired
+    private TeamMembershipRepository teamMembershipRepository;
+
+    @Autowired
+    private TeamRepository teamRepository;
 
     @BeforeEach
     void setUp() {
         auditLogRepository.deleteAll();
         episodeRepository.deleteAll();
+        teamInviteRepository.deleteAll();
+        teamMembershipRepository.deleteAll();
+        teamRepository.deleteAll();
         userRepository.deleteAll();
 
-        userRepository.save(new com.podcastrelease.model.User("producer", "producer@example.com", "pass", com.podcastrelease.model.UserRole.PRODUCER));
-        userRepository.save(new com.podcastrelease.model.User("admin", "admin@example.com", "pass", com.podcastrelease.model.UserRole.ADMIN));
+        userRepository.save(new User("producer", "producer@example.com", "pass"));
+        userRepository.save(new User("admin", "admin@example.com", "pass", PlatformRole.ADMIN));
     }
 
     @Test

@@ -1,12 +1,10 @@
 package com.podcastrelease.service;
 
-import com.podcastrelease.model.AuditLog;
-import com.podcastrelease.model.Episode;
-import com.podcastrelease.model.EpisodeStatus;
-import com.podcastrelease.model.User;
-import com.podcastrelease.model.UserRole;
+import com.podcastrelease.exception.TeamNotFoundException;
+import com.podcastrelease.model.*;
 import com.podcastrelease.repository.AuditLogRepository;
 import com.podcastrelease.repository.EpisodeRepository;
+import com.podcastrelease.repository.TeamMembershipRepository;
 import com.podcastrelease.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,6 +14,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Service
 public class EpisodeService {
@@ -25,25 +24,31 @@ public class EpisodeService {
     private final AuditLogRepository auditLogRepository;
     private final AudioInspectorService audioInspectorService;
     private final DistributionService distributionService;
+    private final TeamSecurityService teamSecurityService;
+    private final TeamMembershipRepository teamMembershipRepository;
+    private final NotificationService notificationService;
 
     public EpisodeService(EpisodeRepository episodeRepository,
                           UserRepository userRepository,
                           AuditLogRepository auditLogRepository,
                           AudioInspectorService audioInspectorService,
-                          DistributionService distributionService) {
+                          DistributionService distributionService,
+                          TeamSecurityService teamSecurityService,
+                          TeamMembershipRepository teamMembershipRepository,
+                          NotificationService notificationService) {
         this.episodeRepository = episodeRepository;
         this.userRepository = userRepository;
         this.auditLogRepository = auditLogRepository;
         this.audioInspectorService = audioInspectorService;
         this.distributionService = distributionService;
+        this.teamSecurityService = teamSecurityService;
+        this.teamMembershipRepository = teamMembershipRepository;
+        this.notificationService = notificationService;
     }
 
     @Transactional
     public Episode create(Episode episode, String username) {
-        User user = null;
-        if (username != null) {
-            user = userRepository.findByUsername(username).orElse(null);
-        }
+        User user = username != null ? userRepository.findByUsername(username).orElse(null) : null;
 
         episode.setCreatedBy(user);
         if (episode.getStatus() == null) {
@@ -51,6 +56,10 @@ public class EpisodeService {
         }
         episode.setCreatedAt(LocalDateTime.now());
         episode.setUpdatedAt(LocalDateTime.now());
+
+        if (episode.getPodcastShow() != null && episode.getTeam() == null) {
+            episode.setTeam(episode.getPodcastShow().getTeam());
+        }
 
         if (episode.getAudioFileUrl() != null && episode.getFileSizeBytes() == null) {
             episode.setFileSizeBytes(352844L);
@@ -69,7 +78,15 @@ public class EpisodeService {
 
     public Episode findById(Long id) {
         return episodeRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Episode not found with id: " + id));
+                .orElseThrow(() -> new TeamNotFoundException("Episode not found with id: " + id));
+    }
+
+    public Episode findById(Long id, User currentUser) {
+        Episode episode = findById(id);
+        if (episode.getTeam() != null) {
+            teamSecurityService.verifyTeamMember(episode.getTeam().getId(), currentUser);
+        }
+        return episode;
     }
 
     @Transactional
@@ -77,10 +94,13 @@ public class EpisodeService {
         Episode existing = findById(id);
 
         if (existing.getStatus() == EpisodeStatus.PUBLISHED || existing.getStatus() == EpisodeStatus.FAILED) {
-            throw new IllegalStateException("Cannot update episode metadata when status is " + existing.getStatus() + ". Metadata updates are only allowed in DRAFT or VALIDATED status.");
+            throw new IllegalStateException("Cannot update episode metadata when status is " + existing.getStatus() + ". Metadata updates are only allowed in active workflow status.");
         }
 
         User user = username != null ? userRepository.findByUsername(username).orElse(null) : null;
+        if (existing.getTeam() != null) {
+            teamSecurityService.verifyTeamMember(existing.getTeam().getId(), user);
+        }
 
         existing.setTitle(updatedEpisode.getTitle());
         existing.setDescription(updatedEpisode.getDescription());
@@ -88,6 +108,9 @@ public class EpisodeService {
         existing.setPublishDate(updatedEpisode.getPublishDate());
         if (updatedEpisode.getPodcastShow() != null) {
             existing.setPodcastShow(updatedEpisode.getPodcastShow());
+            if (existing.getTeam() == null && updatedEpisode.getPodcastShow().getTeam() != null) {
+                existing.setTeam(updatedEpisode.getPodcastShow().getTeam());
+            }
         }
         if (updatedEpisode.getFileSizeBytes() != null) {
             existing.setFileSizeBytes(updatedEpisode.getFileSizeBytes());
@@ -102,6 +125,55 @@ public class EpisodeService {
     }
 
     @Transactional
+    public Episode claimEpisode(Long episodeId, String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + username));
+        Episode episode = findById(episodeId, user);
+
+        TeamRole role = getUserTeamRole(episode, user);
+        boolean isAdminOrSystem = (user.getPlatformRole() == PlatformRole.ADMIN || user.getPlatformRole() == PlatformRole.SYSTEM);
+
+        if (!isAdminOrSystem && role != TeamRole.EDITOR && role != TeamRole.RELEASE_MANAGER && role != TeamRole.OWNER) {
+            throw new IllegalArgumentException("Permission denied: Only Editors, Release Managers, or Owners can claim episodes.");
+        }
+
+        if (episode.getClaimedBy() != null && !episode.getClaimedBy().getId().equals(user.getId()) && !isAdminOrSystem && role != TeamRole.OWNER) {
+            throw new IllegalStateException("Episode is already claimed by " + episode.getClaimedBy().getUsername());
+        }
+
+        episode.setClaimedBy(user);
+        if (episode.getStatus() == EpisodeStatus.PENDING_EDIT || episode.getStatus() == EpisodeStatus.DRAFT) {
+            episode.setStatus(EpisodeStatus.IN_EDITING);
+        }
+        episode.setUpdatedAt(LocalDateTime.now());
+
+        Episode saved = episodeRepository.save(episode);
+        createAuditLog(saved.getId(), "CLAIM_EPISODE by " + user.getUsername(), user);
+        return saved;
+    }
+
+    @Transactional
+    public Episode unclaimEpisode(Long episodeId, String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + username));
+        Episode episode = findById(episodeId, user);
+
+        TeamRole role = getUserTeamRole(episode, user);
+        boolean isAdminOrSystem = (user.getPlatformRole() == PlatformRole.ADMIN || user.getPlatformRole() == PlatformRole.SYSTEM);
+
+        if (episode.getClaimedBy() != null && !episode.getClaimedBy().getId().equals(user.getId()) && !isAdminOrSystem && role != TeamRole.OWNER) {
+            throw new IllegalArgumentException("Permission denied: Cannot unclaim an episode claimed by another user.");
+        }
+
+        episode.setClaimedBy(null);
+        episode.setUpdatedAt(LocalDateTime.now());
+
+        Episode saved = episodeRepository.save(episode);
+        createAuditLog(saved.getId(), "UNCLAIM_EPISODE by " + user.getUsername(), user);
+        return saved;
+    }
+
+    @Transactional
     public Episode updateStatus(Long id, EpisodeStatus targetStatus, String username) {
         return updateStatus(id, targetStatus, username, null);
     }
@@ -110,12 +182,29 @@ public class EpisodeService {
     public Episode updateStatus(Long id, EpisodeStatus targetStatus, String username, String reviewNotes) {
         Episode existing = findById(id);
         User user = username != null ? userRepository.findByUsername(username).orElse(null) : null;
-        EpisodeStatus currentStatus = existing.getStatus();
 
-        boolean isOverrideRole = (user != null && (user.getRole() == UserRole.HOST || user.getRole() == UserRole.ADMIN));
+        if (existing.getTeam() != null) {
+            teamSecurityService.verifyTeamMember(existing.getTeam().getId(), user);
+        }
+
+        EpisodeStatus currentStatus = existing.getStatus();
+        boolean isOverrideRole = (user != null && (user.getPlatformRole() == PlatformRole.ADMIN || user.getPlatformRole() == PlatformRole.SYSTEM));
+        TeamRole teamRole = getUserTeamRole(existing, user);
 
         if (!isOverrideRole) {
-            validateWorkflowTransition(existing, currentStatus, targetStatus);
+            validateStateTransitionMatrix(existing, currentStatus, targetStatus, user, teamRole);
+        }
+
+        // Enforce Self-Review Policy
+        if ((targetStatus == EpisodeStatus.APPROVED || targetStatus == EpisodeStatus.PUBLISHED) &&
+            user != null && existing.getCreatedBy() != null &&
+            existing.getCreatedBy().getId().equals(user.getId()) &&
+            existing.getTeam() != null) {
+
+            Optional<TeamMembership> membership = teamMembershipRepository.findByTeamIdAndUserId(existing.getTeam().getId(), user.getId());
+            if (membership.isPresent() && !membership.get().isAllowSelfReview() && !isOverrideRole) {
+                throw new IllegalArgumentException("Self-review policy violation: Creator cannot approve or publish their own episode.");
+            }
         }
 
         if (targetStatus == EpisodeStatus.PUBLISHED) {
@@ -131,11 +220,15 @@ public class EpisodeService {
         existing.setUpdatedAt(LocalDateTime.now());
 
         Episode saved = episodeRepository.save(existing);
-        String auditAction = "STATUS_CHANGE: " + currentStatus + " -> " + targetStatus + (isOverrideRole ? " (Role Override)" : "");
+        String auditAction = "STATUS_CHANGE: " + currentStatus + " -> " + targetStatus +
+                             (teamRole != null ? " (Role: " + teamRole + ")" : "") +
+                             (isOverrideRole ? " (Platform Override)" : "");
         if (reviewNotes != null && !reviewNotes.trim().isEmpty()) {
             auditAction += " [Notes: " + reviewNotes.trim() + "]";
         }
-        createAuditLog(saved.getId(), auditAction, user);
+        createAuditLog(saved, auditAction, user);
+
+        notificationService.sendWebhookNotification(saved, currentStatus, targetStatus, user);
 
         if (targetStatus == EpisodeStatus.PUBLISHED || targetStatus == EpisodeStatus.FAILED) {
             distributionService.dispatchPublication(saved);
@@ -144,52 +237,97 @@ public class EpisodeService {
         return saved;
     }
 
-    private void validateWorkflowTransition(Episode episode, EpisodeStatus current, EpisodeStatus target) {
-        if (current == target) {
-            return;
+    private void validateStateTransitionMatrix(Episode episode, EpisodeStatus current, EpisodeStatus target, User user, TeamRole role) {
+        if (current == target) return;
+
+        switch (current) {
+            case DRAFT:
+                if (target == EpisodeStatus.PENDING_EDIT || target == EpisodeStatus.SUBMITTED_FOR_REVIEW || target == EpisodeStatus.VALIDATED) {
+                    return;
+                }
+                if (target == EpisodeStatus.APPROVED && (role == TeamRole.RELEASE_MANAGER || role == TeamRole.OWNER)) {
+                    return;
+                }
+                break;
+            case PENDING_EDIT:
+                if (target == EpisodeStatus.IN_EDITING || target == EpisodeStatus.DRAFT) {
+                    return;
+                }
+                break;
+            case IN_EDITING:
+                if (target == EpisodeStatus.EDITED || target == EpisodeStatus.SUBMITTED_FOR_REVIEW || target == EpisodeStatus.PENDING_EDIT) {
+                    return;
+                }
+                break;
+            case EDITED:
+                if (target == EpisodeStatus.SUBMITTED_FOR_REVIEW || target == EpisodeStatus.IN_EDITING) {
+                    return;
+                }
+                break;
+            case SUBMITTED_FOR_REVIEW:
+                if (target == EpisodeStatus.APPROVED || target == EpisodeStatus.NEEDS_REVISION || target == EpisodeStatus.REJECTED || target == EpisodeStatus.PUBLISHED) {
+                    if (role == TeamRole.RELEASE_MANAGER || role == TeamRole.OWNER || role == TeamRole.CREATOR) {
+                        return;
+                    }
+                }
+                break;
+            case NEEDS_REVISION:
+                if (target == EpisodeStatus.IN_EDITING || target == EpisodeStatus.SUBMITTED_FOR_REVIEW || target == EpisodeStatus.DRAFT) {
+                    return;
+                }
+                break;
+            case APPROVED:
+                if (target == EpisodeStatus.SCHEDULED || target == EpisodeStatus.PUBLISHING || target == EpisodeStatus.PUBLISHED || target == EpisodeStatus.NEEDS_REVISION) {
+                    return;
+                }
+                break;
+            case SCHEDULED:
+                if (target == EpisodeStatus.PUBLISHING || target == EpisodeStatus.PUBLISHED || target == EpisodeStatus.FAILED) {
+                    return;
+                }
+                break;
+            case PUBLISHING:
+                if (target == EpisodeStatus.PUBLISHED || target == EpisodeStatus.FAILED) {
+                    return;
+                }
+                break;
+            case REJECTED:
+                if (target == EpisodeStatus.DRAFT) {
+                    return;
+                }
+                break;
+            case FAILED:
+                if (target == EpisodeStatus.DRAFT || target == EpisodeStatus.APPROVED || target == EpisodeStatus.PUBLISHED) {
+                    return;
+                }
+                break;
+            case VALIDATED:
+                if (target == EpisodeStatus.PUBLISHED || target == EpisodeStatus.APPROVED || target == EpisodeStatus.FAILED) {
+                    return;
+                }
+                break;
         }
 
-        if (current == EpisodeStatus.DRAFT && target == EpisodeStatus.VALIDATED) {
-            validateMetadataPresent(episode);
-            return;
-        }
-
-        if (current == EpisodeStatus.VALIDATED && (target == EpisodeStatus.PUBLISHED || target == EpisodeStatus.FAILED)) {
-            return;
-        }
-
-        throw new IllegalArgumentException("Invalid status transition from " + current + " to " + target + ". Producer standard workflow is DRAFT -> VALIDATED -> PUBLISHED/FAILED.");
+        throw new IllegalArgumentException("Invalid status transition from " + current + " to " + target + " for user role " + (role != null ? role : "GUEST"));
     }
 
-    private void validateMetadataPresent(Episode episode) {
+    private TeamRole getUserTeamRole(Episode episode, User user) {
+        if (user == null || episode.getTeam() == null) return null;
+        return teamMembershipRepository.findByTeamIdAndUserId(episode.getTeam().getId(), user.getId())
+                .map(TeamMembership::getRole)
+                .orElse(null);
+    }
+
+    private void validatePrePublish(Episode episode) {
         if (episode.getTitle() == null || episode.getTitle().trim().isEmpty() ||
             episode.getDescription() == null || episode.getDescription().trim().isEmpty() ||
             episode.getPublishDate() == null) {
             throw new IllegalArgumentException("Cannot validate episode: missing required metadata (title, description, or publishDate).");
         }
-    }
 
-    private void validatePrePublish(Episode episode) {
-        validateMetadataPresent(episode);
         String url = episode.getAudioFileUrl();
         if (url == null || url.trim().isEmpty()) {
             throw new IllegalArgumentException("Pre-publish validation failed: audio file reference missing.");
-        }
-
-        String lowerUrl = url.trim().toLowerCase();
-        boolean isValidUrlOrExtension = lowerUrl.startsWith("http://") ||
-                                        lowerUrl.startsWith("https://") ||
-                                        lowerUrl.startsWith("s3://") ||
-                                        lowerUrl.startsWith("file://") ||
-                                        lowerUrl.startsWith("/") ||
-                                        lowerUrl.endsWith(".mp3") ||
-                                        lowerUrl.endsWith(".wav") ||
-                                        lowerUrl.endsWith(".m4a") ||
-                                        lowerUrl.endsWith(".aac") ||
-                                        lowerUrl.endsWith(".ogg");
-
-        if (!isValidUrlOrExtension) {
-            throw new IllegalArgumentException("Pre-publish validation failed: invalid audio file format or URL schema.");
         }
     }
 
@@ -201,7 +339,7 @@ public class EpisodeService {
     public Map<String, Object> getDashboardSummary() {
         Map<String, Object> summary = new HashMap<>();
         long draftCount = episodeRepository.countByStatus(EpisodeStatus.DRAFT);
-        long validatedCount = episodeRepository.countByStatus(EpisodeStatus.VALIDATED);
+        long validatedCount = episodeRepository.countByStatus(EpisodeStatus.VALIDATED) + episodeRepository.countByStatus(EpisodeStatus.APPROVED);
         long publishedCount = episodeRepository.countByStatus(EpisodeStatus.PUBLISHED);
         long failedCount = episodeRepository.countByStatus(EpisodeStatus.FAILED);
         long total = episodeRepository.count();
@@ -256,8 +394,16 @@ public class EpisodeService {
         return audioInspectorService.inspect(file, path);
     }
 
+    private void createAuditLog(Episode episode, String action, User user) {
+        Long teamId = episode.getTeam() != null ? episode.getTeam().getId() : null;
+        AuditLog log = new AuditLog(episode.getId(), teamId, action, user);
+        auditLogRepository.save(log);
+    }
+
     private void createAuditLog(Long episodeId, String action, User user) {
-        AuditLog log = new AuditLog(episodeId, action, user);
+        Episode episode = episodeRepository.findById(episodeId).orElse(null);
+        Long teamId = episode != null && episode.getTeam() != null ? episode.getTeam().getId() : null;
+        AuditLog log = new AuditLog(episodeId, teamId, action, user);
         auditLogRepository.save(log);
     }
 }

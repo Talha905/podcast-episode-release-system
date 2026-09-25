@@ -37,6 +37,7 @@ public class DistributionService {
 
     private final PlatformAccountRepository platformAccountRepository;
     private final WebhookConfigRepository webhookConfigRepository;
+    private final com.podcastrelease.repository.EpisodeRepository episodeRepository;
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper;
 
@@ -47,9 +48,11 @@ public class DistributionService {
     private String youtubeClientSecret;
 
     public DistributionService(PlatformAccountRepository platformAccountRepository,
-                               WebhookConfigRepository webhookConfigRepository) {
+                               WebhookConfigRepository webhookConfigRepository,
+                               com.podcastrelease.repository.EpisodeRepository episodeRepository) {
         this.platformAccountRepository = platformAccountRepository;
         this.webhookConfigRepository = webhookConfigRepository;
+        this.episodeRepository = episodeRepository;
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(15))
                 .build();
@@ -164,6 +167,11 @@ public class DistributionService {
                 JsonNode responseJson = objectMapper.readTree(uploadResponse.body());
                 String videoId = responseJson.path("id").asText();
                 String youtubeUrl = "https://www.youtube.com/watch?v=" + videoId;
+
+                episode.setYoutubeVideoId(videoId);
+                episode.setYoutubeVideoUrl(youtubeUrl);
+                episodeRepository.save(episode);
+
                 logger.info("Successfully published episode '{}' to YouTube! Video URL: {}", episode.getTitle(), youtubeUrl);
                 return "Successfully uploaded to YouTube: " + youtubeUrl;
             } else {

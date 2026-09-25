@@ -45,11 +45,6 @@ public class WebController {
 
     @GetMapping("/signup")
     public String signupPage(Model model) {
-        // Restrict public signup to PRODUCER and HOST (ADMIN must be assigned by Admin)
-        model.addAttribute("roles", new com.podcastrelease.model.UserRole[]{
-                com.podcastrelease.model.UserRole.PRODUCER,
-                com.podcastrelease.model.UserRole.HOST
-        });
         return "signup";
     }
 
@@ -58,18 +53,12 @@ public class WebController {
             @RequestParam String username,
             @RequestParam String email,
             @RequestParam String password,
-            @RequestParam(defaultValue = "PRODUCER") com.podcastrelease.model.UserRole role,
             RedirectAttributes redirectAttributes) {
 
         if (username == null || username.trim().isEmpty() ||
             email == null || email.trim().isEmpty() ||
             password == null || password.trim().isEmpty()) {
             redirectAttributes.addFlashAttribute("errorMessage", "Username, email, and password are all required.");
-            return "redirect:/signup";
-        }
-
-        if (role == com.podcastrelease.model.UserRole.ADMIN) {
-            redirectAttributes.addFlashAttribute("errorMessage", "Admin role cannot be selected via public registration.");
             return "redirect:/signup";
         }
 
@@ -83,7 +72,7 @@ public class WebController {
             return "redirect:/signup";
         }
 
-        User user = new User(username.trim(), email.trim(), passwordEncoder.encode(password), role);
+        User user = new User(username.trim(), email.trim(), passwordEncoder.encode(password));
         user.setEnabled(false); // Disabled until OTP is verified
         userRepository.save(user);
 

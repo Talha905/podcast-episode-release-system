@@ -23,7 +23,9 @@
             background: #ffffff;
         }
         .badge-draft { background-color: #e2e8f0; color: #475569; font-weight: 600; }
-        .badge-validated { background-color: #dbeafe; color: #1e40af; font-weight: 600; }
+        .badge-editing { background-color: #dbeafe; color: #1e40af; font-weight: 600; }
+        .badge-review { background-color: #fef3c7; color: #92400e; font-weight: 600; }
+        .badge-approved { background-color: #ccfbf1; color: #115e59; font-weight: 600; }
         .badge-published { background-color: #dcfce7; color: #166534; font-weight: 600; }
         .badge-failed { background-color: #fee2e2; color: #991b1b; font-weight: 600; }
         audio {
@@ -47,7 +49,7 @@
         </div>
     </nav>
 
-    <div class="container mb-5" style="max-width: 900px;">
+    <div class="container mb-5" style="max-width: 920px;">
         <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show rounded-3 mb-4 shadow-sm" role="alert">
             <i class="bi bi-check-circle-fill me-2"></i><span th:text="${successMessage}"></span>
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
@@ -61,14 +63,30 @@
             <div class="card-body p-4">
                 <div class="d-flex justify-content-between align-items-start mb-3">
                     <div>
-                        <span class="badge rounded-pill px-3 py-2 mb-2" 
-                              th:classappend="${episode.status.name() == 'DRAFT' ? 'badge-draft' : (episode.status.name() == 'VALIDATED' ? 'badge-validated' : (episode.status.name() == 'PUBLISHED' ? 'badge-published' : 'badge-failed'))}">
-                            <i class="bi me-1" th:classappend="${episode.status.name() == 'DRAFT' ? 'bi-pencil' : (episode.status.name() == 'VALIDATED' ? 'bi-check-all' : (episode.status.name() == 'PUBLISHED' ? 'bi-broadcast' : 'bi-x-circle'))}"></i>
-                            <span th:text="${episode.status}">STATUS</span>
+                        <span th:switch="${episode.status.name()}" class="mb-2 d-inline-block">
+                            <span th:case="'DRAFT'" class="badge rounded-pill px-3 py-2 badge-draft"><i class="bi bi-pencil me-1"></i>DRAFT</span>
+                            <span th:case="'VALIDATED'" class="badge rounded-pill px-3 py-2 badge-approved"><i class="bi bi-check2-circle me-1"></i>VALIDATED</span>
+                            <span th:case="'APPROVED'" class="badge rounded-pill px-3 py-2 badge-approved"><i class="bi bi-check-circle me-1"></i>APPROVED</span>
+                            <span th:case="'PUBLISHED'" class="badge rounded-pill px-3 py-2 badge-published"><i class="bi bi-broadcast me-1"></i>PUBLISHED</span>
+                            <span th:case="'FAILED'" class="badge rounded-pill px-3 py-2 badge-failed"><i class="bi bi-x-circle me-1"></i>FAILED</span>
+                            <span th:case="'REJECTED'" class="badge rounded-pill px-3 py-2 badge-failed"><i class="bi bi-x-circle me-1"></i>REJECTED</span>
+                            <span th:case="'IN_EDITING'" class="badge rounded-pill px-3 py-2 badge-editing"><i class="bi bi-scissors me-1"></i>IN_EDITING</span>
+                            <span th:case="'PENDING_EDIT'" class="badge rounded-pill px-3 py-2 badge-editing"><i class="bi bi-scissors me-1"></i>PENDING_EDIT</span>
+                            <span th:case="'EDITED'" class="badge rounded-pill px-3 py-2 badge-editing"><i class="bi bi-check-lg me-1"></i>EDITED</span>
+                            <span th:case="'SUBMITTED_FOR_REVIEW'" class="badge rounded-pill px-3 py-2 badge-review"><i class="bi bi-send me-1"></i>SUBMITTED_FOR_REVIEW</span>
+                            <span th:case="'NEEDS_REVISION'" class="badge rounded-pill px-3 py-2 badge-review"><i class="bi bi-arrow-counterclockwise me-1"></i>NEEDS_REVISION</span>
+                            <span th:case="'SCHEDULED'" class="badge rounded-pill px-3 py-2 badge-editing"><i class="bi bi-calendar-check me-1"></i>SCHEDULED</span>
+                            <span th:case="'PUBLISHING'" class="badge rounded-pill px-3 py-2 badge-editing"><i class="bi bi-broadcast me-1"></i>PUBLISHING</span>
+                            <span th:case="*" class="badge rounded-pill px-3 py-2 badge-draft" th:text="${episode.status}">STATUS</span>
                         </span>
                         <h2 class="fw-bold text-dark mb-0" th:text="${episode.title}">Episode Title</h2>
                     </div>
-                    <span class="text-muted small">Episode ID: <strong th:text="${episode.id}">1</strong></span>
+                    <div class="text-end">
+                        <span class="text-muted small d-block mb-1">Episode ID: <strong th:text="${episode.id}">1</strong></span>
+                        <span th:if="${episode.claimedBy != null}" class="badge bg-primary text-white rounded-pill px-3 py-1">
+                            <i class="bi bi-person-check-fill me-1"></i>Claimed by <span th:text="${episode.claimedBy.username}">Editor</span>
+                        </span>
+                    </div>
                 </div>
 
                 <div class="row g-3 p-3 bg-light rounded-3 mb-4 border">
@@ -76,7 +94,7 @@
                         <div class="text-muted small">Podcast Show</div>
                         <div class="fw-bold text-dark">
                             <i class="bi bi-broadcast me-1 text-primary"></i>
-                            <span th:text="${episode.podcastShow != null ? episode.podcastShow.name : 'Unassigned'}">Show Name</span>
+                            <span th:text="${episode.podcastShow != null ? episode.podcastShow.title : 'Unassigned'}">Show Name</span>
                         </div>
                     </div>
                     <div class="col-md-3">
@@ -88,7 +106,7 @@
                         <div class="fw-bold text-dark"><i class="bi bi-stopwatch me-1 text-primary"></i><span th:text="${episode.formattedDuration != null ? episode.formattedDuration : 'N/A'}">00:04:00</span></div>
                     </div>
                     <div class="col-md-3">
-                        <div class="text-muted small">File Size / Approved By</div>
+                        <div class="text-muted small">Approved By / Size</div>
                         <div class="fw-bold text-dark">
                             <i class="bi bi-person-check me-1 text-primary"></i>
                             <span th:text="${episode.approvedBy != null ? 'Approved by ' + episode.approvedBy.username : (episode.fileSizeBytes != null ? (episode.fileSizeBytes / 1024 + ' KB') : 'N/A')}">Host</span>
@@ -97,8 +115,8 @@
                 </div>
 
                 <div class="mb-4" th:if="${episode.reviewNotes != null && !#strings.isEmpty(episode.reviewNotes)}">
-                    <h6 class="fw-bold text-uppercase text-muted small"><i class="bi bi-chat-left-text me-1 text-warning"></i> Host Review & Approval Notes</h6>
-                    <div class="p-3 bg-warning-subtle border border-warning-subtle rounded-3 text-dark small" th:text="${episode.reviewNotes}">Host feedback notes...</div>
+                    <h6 class="fw-bold text-uppercase text-muted small"><i class="bi bi-chat-left-text me-1 text-warning"></i> Review Notes & Feedback</h6>
+                    <div class="p-3 bg-warning-subtle border border-warning-subtle rounded-3 text-dark small" th:text="${episode.reviewNotes}">Review feedback notes...</div>
                 </div>
 
                 <div class="mb-4">
@@ -109,9 +127,9 @@
                 <!-- Audio Preview Player -->
                 <div class="mb-4 p-3 bg-light rounded-3 border" th:if="${episode.audioFileUrl != null && !#strings.isEmpty(episode.audioFileUrl)}">
                     <div class="d-flex justify-content-between align-items-center mb-2">
-                        <h6 class="fw-bold text-dark mb-0"><i class="bi bi-music-note-beamed text-primary me-1"></i> Audio Preview</h6>
+                        <h6 class="fw-bold text-dark mb-0"><i class="bi bi-music-note-beamed text-primary me-1"></i> Audio Preview Player</h6>
                         <a th:href="@{${episode.audioFileUrl}}" target="_blank" class="btn btn-sm btn-outline-secondary rounded-pill">
-                            <i class="bi bi-download me-1"></i> Direct Link
+                            <i class="bi bi-download me-1"></i> Direct File Link
                         </a>
                     </div>
                     <audio controls class="w-100">
@@ -125,42 +143,61 @@
 
                 <!-- Status Workflow Actions -->
                 <div class="border-top pt-3">
-                    <h6 class="fw-bold text-uppercase text-muted small mb-3"><i class="bi bi-signpost-split me-1"></i> Release Workflow Actions</h6>
+                    <h6 class="fw-bold text-uppercase text-muted small mb-3"><i class="bi bi-signpost-split me-1"></i> Multi-Stage Workflow Actions</h6>
 
-                    <!-- Host / Admin Review Notes Input -->
                     <form th:action="@{/episodes/{id}/status(id=${episode.id})}" method="post" id="statusForm">
-                        <div class="mb-3" sec:authorize="hasAnyRole('HOST', 'ADMIN')" th:if="${episode.status.name() == 'VALIDATED'}">
-                            <label for="reviewNotes" class="form-label text-muted small fw-semibold">Review Notes / Feedback (Optional)</label>
-                            <textarea id="reviewNotes" name="reviewNotes" class="form-control form-control-sm" rows="2" placeholder="e.g. Approved for Friday morning release, audio levels sound crisp!"></textarea>
+                        <div class="mb-3">
+                            <label for="reviewNotes" class="form-label text-muted small fw-semibold">Review Notes / State Transition Notes (Optional)</label>
+                            <textarea id="reviewNotes" name="reviewNotes" class="form-control form-control-sm" rows="2" placeholder="e.g. Audio editing complete, ready for release manager approval!"></textarea>
                         </div>
 
                         <div class="d-flex gap-2 flex-wrap align-items-center">
-                            <!-- Transition to VALIDATED (for DRAFT - Producer action) -->
-                            <button type="submit" name="status" value="VALIDATED" class="btn btn-info text-white fw-semibold rounded-pill px-4" th:if="${episode.status.name() == 'DRAFT'}">
-                                <i class="bi bi-check-circle me-1"></i> Submit for Validation
+                            <!-- DRAFT options -->
+                            <button type="submit" name="status" value="SUBMITTED_FOR_REVIEW" class="btn btn-warning text-dark fw-semibold rounded-pill px-4" th:if="${episode.status.name() == 'DRAFT'}">
+                                <i class="bi bi-send me-1"></i> Submit for Review
+                            </button>
+                            <button type="submit" name="status" value="PENDING_EDIT" class="btn btn-info text-white fw-semibold rounded-pill px-4" th:if="${episode.status.name() == 'DRAFT'}">
+                                <i class="bi bi-scissors me-1"></i> Send to Editing Pool
                             </button>
 
-                            <!-- Transition to PUBLISHED (for VALIDATED - Host action) -->
-                            <button type="submit" name="status" value="PUBLISHED" class="btn btn-success fw-semibold rounded-pill px-4" th:if="${episode.status.name() == 'VALIDATED'}" sec:authorize="hasAnyRole('HOST', 'ADMIN')">
-                                <i class="bi bi-broadcast me-1"></i> Approve & Publish Episode
+                            <!-- PENDING_EDIT / IN_EDITING options -->
+                            <button type="submit" name="status" value="SUBMITTED_FOR_REVIEW" class="btn btn-warning text-dark fw-semibold rounded-pill px-4" th:if="${episode.status.name() == 'IN_EDITING' || episode.status.name() == 'EDITED'}">
+                                <i class="bi bi-send me-1"></i> Submit for Review
+                            </button>
+                            <button type="submit" name="status" value="EDITED" class="btn btn-info text-white fw-semibold rounded-pill px-4" th:if="${episode.status.name() == 'IN_EDITING'}">
+                                <i class="bi bi-check-lg me-1"></i> Mark Editing Completed
                             </button>
 
-                            <!-- Request Changes / Reject (for VALIDATED - Host action) -->
-                            <button type="submit" name="status" value="DRAFT" class="btn btn-outline-warning fw-semibold rounded-pill px-3" th:if="${episode.status.name() == 'VALIDATED'}" sec:authorize="hasAnyRole('HOST', 'ADMIN')">
-                                <i class="bi bi-arrow-counterclockwise me-1"></i> Request Changes (Return to Draft)
+                            <!-- SUBMITTED_FOR_REVIEW / VALIDATED options -->
+                            <button type="submit" name="status" value="APPROVED" class="btn btn-teal text-white fw-semibold rounded-pill px-4" style="background-color: #0d9488;" th:if="${episode.status.name() == 'SUBMITTED_FOR_REVIEW' || episode.status.name() == 'VALIDATED'}">
+                                <i class="bi bi-check-circle me-1"></i> Approve Episode
+                            </button>
+                            <button type="submit" name="status" value="PUBLISHED" class="btn btn-success fw-semibold rounded-pill px-4" th:if="${episode.status.name() == 'SUBMITTED_FOR_REVIEW' || episode.status.name() == 'APPROVED' || episode.status.name() == 'VALIDATED'}">
+                                <i class="bi bi-broadcast me-1"></i> Publish Episode Now
+                            </button>
+                            <button type="submit" name="status" value="NEEDS_REVISION" class="btn btn-outline-warning fw-semibold rounded-pill px-3" th:if="${episode.status.name() == 'SUBMITTED_FOR_REVIEW' || episode.status.name() == 'APPROVED'}">
+                                <i class="bi bi-arrow-counterclockwise me-1"></i> Request Revision
+                            </button>
+                            <button type="submit" name="status" value="REJECTED" class="btn btn-outline-danger fw-semibold rounded-pill px-3" th:if="${episode.status.name() == 'SUBMITTED_FOR_REVIEW'}">
+                                <i class="bi bi-x-circle me-1"></i> Reject Episode
                             </button>
 
-                            <!-- Transition to FAILED -->
-                            <button type="submit" name="status" value="FAILED" class="btn btn-outline-danger fw-semibold rounded-pill px-3" th:if="${episode.status.name() == 'VALIDATED'}" sec:authorize="hasAnyRole('HOST', 'ADMIN')">
-                                <i class="bi bi-x-circle me-1"></i> Mark Release Failed
+                            <!-- APPROVED options -->
+                            <button type="submit" name="status" value="SCHEDULED" class="btn btn-primary fw-semibold rounded-pill px-4" th:if="${episode.status.name() == 'APPROVED'}">
+                                <i class="bi bi-calendar-check me-1"></i> Schedule Release
                             </button>
 
-                            <!-- Admin Override Buttons -->
-                            <div sec:authorize="hasRole('ADMIN')" class="dropdown d-inline">
-                                <button class="btn btn-warning dropdown-toggle fw-semibold rounded-pill px-3" type="button" data-bs-toggle="dropdown">
+                            <!-- REJECTED / FAILED recovery -->
+                            <button type="submit" name="status" value="DRAFT" class="btn btn-outline-secondary fw-semibold rounded-pill px-3" th:if="${episode.status.name() == 'REJECTED' || episode.status.name() == 'FAILED'}">
+                                <i class="bi bi-arrow-clockwise me-1"></i> Reopen as Draft
+                            </button>
+
+                            <!-- Admin Override Status -->
+                            <div sec:authorize="hasRole('ADMIN')" class="dropdown d-inline ms-auto">
+                                <button class="btn btn-dark dropdown-toggle fw-semibold rounded-pill px-3" type="button" data-bs-toggle="dropdown">
                                     <i class="bi bi-shield-lock me-1"></i> Admin Override Status
                                 </button>
-                                <ul class="dropdown-menu shadow">
+                                <ul class="dropdown-menu dropdown-menu-end shadow">
                                     <li th:each="st : ${statuses}">
                                         <button type="submit" name="status" th:value="${st}" class="dropdown-item" th:text="${'Set to ' + st}"></button>
                                     </li>
@@ -168,12 +205,11 @@
                             </div>
 
                             <!-- Edit Metadata Button -->
-                            <a th:href="@{/episodes/{id}/edit(id=${episode.id})}" class="btn btn-secondary rounded-pill px-4" sec:authorize="hasAnyRole('PRODUCER', 'ADMIN')" th:if="${episode.status.name() == 'DRAFT' || episode.status.name() == 'VALIDATED'}">
+                            <a th:href="@{/episodes/{id}/edit(id=${episode.id})}" class="btn btn-secondary rounded-pill px-4" sec:authorize="isAuthenticated()" th:if="${episode.status.name() != 'PUBLISHED' && episode.status.name() != 'FAILED'}">
                                 <i class="bi bi-pencil me-1"></i> Edit Metadata
                             </a>
                         </div>
                     </form>
-                </div>
                 </div>
             </div>
         </div>

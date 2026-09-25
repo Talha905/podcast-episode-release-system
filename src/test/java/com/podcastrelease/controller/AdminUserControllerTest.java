@@ -1,13 +1,9 @@
 package com.podcastrelease.controller;
 
+import com.podcastrelease.model.PlatformRole;
 import com.podcastrelease.model.PodcastShow;
 import com.podcastrelease.model.User;
-import com.podcastrelease.model.UserRole;
-import com.podcastrelease.repository.AuditLogRepository;
-import com.podcastrelease.repository.EpisodeRepository;
-import com.podcastrelease.repository.PodcastShowMemberRepository;
-import com.podcastrelease.repository.PodcastShowRepository;
-import com.podcastrelease.repository.UserRepository;
+import com.podcastrelease.repository.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,6 +40,15 @@ class AdminUserControllerTest {
     @Autowired
     private EpisodeRepository episodeRepository;
 
+    @Autowired
+    private TeamInviteRepository teamInviteRepository;
+
+    @Autowired
+    private TeamMembershipRepository teamMembershipRepository;
+
+    @Autowired
+    private TeamRepository teamRepository;
+
     private User sampleUser;
     private PodcastShow sampleShow;
 
@@ -52,15 +57,18 @@ class AdminUserControllerTest {
         auditLogRepository.deleteAll();
         episodeRepository.deleteAll();
         podcastShowMemberRepository.deleteAll();
-        userRepository.deleteAll();
         podcastShowRepository.deleteAll();
+        teamInviteRepository.deleteAll();
+        teamMembershipRepository.deleteAll();
+        teamRepository.deleteAll();
+        userRepository.deleteAll();
 
-        sampleUser = userRepository.save(new User("sampleprod", "prod@example.com", "pass123", UserRole.PRODUCER));
+        sampleUser = userRepository.save(new User("sampleprod", "prod@example.com", "pass123"));
         sampleShow = podcastShowRepository.save(new PodcastShow("Test Show", "test-show", "Desc", "Tech", "Author", "email@show.com", null));
     }
 
     @Test
-    @WithMockUser(username = "producer", roles = {"PRODUCER"})
+    @WithMockUser(username = "user", roles = {"USER"})
     void listUsers_forbiddenForNonAdmin() throws Exception {
         mockMvc.perform(get("/admin/users"))
                 .andExpect(status().isForbidden());
@@ -80,12 +88,12 @@ class AdminUserControllerTest {
     void updateUserRole_changesRoleSuccessfully() throws Exception {
         mockMvc.perform(post("/admin/users/" + sampleUser.getId() + "/role")
                         .with(csrf())
-                        .param("role", "HOST"))
+                        .param("platformRole", "ADMIN"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/admin/users"));
 
         User updated = userRepository.findById(sampleUser.getId()).orElseThrow();
-        assertEquals(UserRole.HOST, updated.getRole());
+        assertEquals(PlatformRole.ADMIN, updated.getPlatformRole());
     }
 
     @Test
@@ -100,18 +108,5 @@ class AdminUserControllerTest {
 
         User updated = userRepository.findById(sampleUser.getId()).orElseThrow();
         assertFalse(updated.isEnabled());
-    }
-
-    @Test
-    @WithMockUser(username = "admin", roles = {"ADMIN"})
-    void assignUserToShow_createsShowMemberRecord() throws Exception {
-        mockMvc.perform(post("/admin/users/" + sampleUser.getId() + "/assign-show")
-                        .with(csrf())
-                        .param("showId", sampleShow.getId().toString())
-                        .param("roleInShow", "PRODUCER"))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/admin/users"));
-
-        assertTrue(podcastShowMemberRepository.existsByPodcastShowIdAndUserId(sampleShow.getId(), sampleUser.getId()));
     }
 }

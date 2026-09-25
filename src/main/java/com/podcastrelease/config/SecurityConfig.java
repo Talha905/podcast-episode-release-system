@@ -3,7 +3,6 @@ package com.podcastrelease.config;
 import com.podcastrelease.security.CustomUserDetailsService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
@@ -52,16 +51,9 @@ public class SecurityConfig {
                 .frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin)
             )
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/login", "/signup", "/verify-otp", "/css/**", "/js/**", "/h2-console/**", "/api/auth/login", "/api/auth/register", "/feed.xml", "/rss", "/shows/*/feed.xml", "/platforms/oauth2/callback/**").permitAll()
+                .requestMatchers("/login", "/signup", "/verify-otp", "/css/**", "/js/**", "/h2-console/**", "/api/auth/login", "/api/auth/register", "/api/invites/*/accept", "/api/jenkins/callback", "/api/episodes/*/jenkins-callback", "/feed.xml", "/rss", "/shows/*/feed.xml", "/platforms/oauth2/callback/**").permitAll()
                 .requestMatchers("/admin/**").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.POST, "/api/episodes").hasAnyRole("PRODUCER", "ADMIN")
-                .requestMatchers(HttpMethod.PUT, "/api/episodes/**").hasAnyRole("PRODUCER", "ADMIN")
-                .requestMatchers(HttpMethod.PATCH, "/api/episodes/*/status").hasAnyRole("PRODUCER", "HOST", "ADMIN")
-                .requestMatchers("/api/episodes/*/audit").hasAnyRole("ADMIN", "HOST")
-                .requestMatchers("/api/dashboard/summary").hasAnyRole("HOST", "ADMIN", "PRODUCER")
-                .requestMatchers("/api/episodes/**").hasAnyRole("PRODUCER", "HOST", "ADMIN")
-                .requestMatchers("/platforms/**").hasAnyRole("PRODUCER", "ADMIN")
-                .requestMatchers("/shows/**", "/dashboard").hasAnyRole("HOST", "ADMIN", "PRODUCER")
+                .requestMatchers("/api/teams/**").authenticated()
                 .anyRequest().authenticated()
             )
             .formLogin(form -> form

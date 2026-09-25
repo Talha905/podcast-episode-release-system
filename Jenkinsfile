@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     parameters {
-        string(name: 'SERVER_PORT', defaultValue: '8083', description: 'Target application server port')
+        string(name: 'SERVER_PORT', defaultValue: '8005', description: 'Target application server port')
         choice(name: 'ENVIRONMENT', choices: ['dev', 'prod'], description: 'Target deployment environment profile')
         string(name: 'TOMCAT_WEBAPPS_DIR', defaultValue: 'C:\\Users\\thele\\Downloads\\apache-tomcat-11.0.25\\apache-tomcat-11.0.25\\webapps', description: 'Path to target Tomcat webapps directory')
     }

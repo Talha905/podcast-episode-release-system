@@ -29,7 +29,8 @@ public class DataInitializer implements CommandLineRunner {
     private final PlatformAccountRepository platformAccountRepository;
     private final WebhookConfigRepository webhookConfigRepository;
     private final AudioInspectorService audioInspectorService;
-    private final PodcastShowMemberRepository podcastShowMemberRepository;
+    private final TeamRepository teamRepository;
+    private final TeamMembershipRepository teamMembershipRepository;
 
     public DataInitializer(UserRepository userRepository,
                            EpisodeRepository episodeRepository,
@@ -39,7 +40,8 @@ public class DataInitializer implements CommandLineRunner {
                            PlatformAccountRepository platformAccountRepository,
                            WebhookConfigRepository webhookConfigRepository,
                            AudioInspectorService audioInspectorService,
-                           PodcastShowMemberRepository podcastShowMemberRepository) {
+                           TeamRepository teamRepository,
+                           TeamMembershipRepository teamMembershipRepository) {
         this.userRepository = userRepository;
         this.episodeRepository = episodeRepository;
         this.auditLogRepository = auditLogRepository;
@@ -48,18 +50,26 @@ public class DataInitializer implements CommandLineRunner {
         this.platformAccountRepository = platformAccountRepository;
         this.webhookConfigRepository = webhookConfigRepository;
         this.audioInspectorService = audioInspectorService;
-        this.podcastShowMemberRepository = podcastShowMemberRepository;
+        this.teamRepository = teamRepository;
+        this.teamMembershipRepository = teamMembershipRepository;
     }
 
     @Override
     public void run(String... args) {
         ensureSampleAudioFilesExist();
 
+        Team defaultTeam = null;
+        if (teamRepository.count() == 0) {
+            defaultTeam = teamRepository.save(new Team("Legacy Podcast Team", "Default podcast production team"));
+        } else {
+            defaultTeam = teamRepository.findByName("Legacy Podcast Team").orElse(null);
+        }
+
         // Seed Podcast Shows
         PodcastShow show1 = null;
         PodcastShow show2 = null;
         if (podcastShowRepository.count() == 0) {
-            show1 = podcastShowRepository.save(new PodcastShow(
+            show1 = new PodcastShow(
                     "Tech & AI Insights",
                     "tech-ai-insights",
                     "Deep dives into AI, software engineering, and high-throughput system design.",
@@ -67,9 +77,11 @@ public class DataInitializer implements CommandLineRunner {
                     "Talha Patrawala",
                     "producer@podcastrelease.com",
                     "https://podcastrelease.com/artwork/tech.png"
-            ));
+            );
+            show1.setTeam(defaultTeam);
+            show1 = podcastShowRepository.save(show1);
 
-            show2 = podcastShowRepository.save(new PodcastShow(
+            show2 = new PodcastShow(
                     "DevOps Uncut",
                     "devops-uncut",
                     "Raw and unfiltered discussions on CI/CD pipelines, Kubernetes, cloud native security, and infrastructure automation.",
@@ -77,23 +89,24 @@ public class DataInitializer implements CommandLineRunner {
                     "DevOps Engineering Team",
                     "devops@podcastrelease.com",
                     "https://podcastrelease.com/artwork/devops.png"
-            ));
+            );
+            show2.setTeam(defaultTeam);
+            show2 = podcastShowRepository.save(show2);
         } else {
             show1 = podcastShowRepository.findBySlug("tech-ai-insights").orElse(null);
             show2 = podcastShowRepository.findBySlug("devops-uncut").orElse(null);
         }
 
-
-
         if (userRepository.count() == 0) {
-            User producer = userRepository.save(new User("producer", "producer@podcastrelease.com", passwordEncoder.encode("password123"), UserRole.PRODUCER));
-            User host = userRepository.save(new User("host", "host@podcastrelease.com", passwordEncoder.encode("password123"), UserRole.HOST));
-            User admin = userRepository.save(new User("admin", "admin@podcastrelease.com", passwordEncoder.encode("password123"), UserRole.ADMIN));
+            User producer = userRepository.save(new User("producer", "producer@podcastrelease.com", passwordEncoder.encode("password123")));
+            User host = userRepository.save(new User("host", "host@podcastrelease.com", passwordEncoder.encode("password123")));
+            User admin = userRepository.save(new User("admin", "admin@podcastrelease.com", passwordEncoder.encode("password123"), PlatformRole.ADMIN));
+            User jenkinsBot = userRepository.save(new User("jenkins_bot", "jenkins@podcastrelease.com", passwordEncoder.encode("jenkins123"), PlatformRole.SYSTEM));
 
-            if (show1 != null && show2 != null) {
-                podcastShowMemberRepository.save(new PodcastShowMember(show1, producer, UserRole.PRODUCER));
-                podcastShowMemberRepository.save(new PodcastShowMember(show1, host, UserRole.HOST));
-                podcastShowMemberRepository.save(new PodcastShowMember(show2, producer, UserRole.PRODUCER));
+            if (defaultTeam != null) {
+                teamMembershipRepository.save(new TeamMembership(defaultTeam, admin, TeamRole.OWNER));
+                teamMembershipRepository.save(new TeamMembership(defaultTeam, producer, TeamRole.CREATOR));
+                teamMembershipRepository.save(new TeamMembership(defaultTeam, host, TeamRole.RELEASE_MANAGER));
             }
 
             if (episodeRepository.count() == 0) {
@@ -107,10 +120,11 @@ public class DataInitializer implements CommandLineRunner {
                 ep1.setCreatedBy(producer);
                 ep1.setStatus(EpisodeStatus.PUBLISHED);
                 ep1.setPodcastShow(show1);
+                ep1.setTeam(defaultTeam);
                 ep1 = saveAndInspect(ep1);
                 auditLogRepository.save(new AuditLog(ep1.getId(), "CREATE_EPISODE (Status: DRAFT)", producer));
-                auditLogRepository.save(new AuditLog(ep1.getId(), "STATUS_CHANGE: DRAFT -> VALIDATED", producer));
-                auditLogRepository.save(new AuditLog(ep1.getId(), "STATUS_CHANGE: VALIDATED -> PUBLISHED", host));
+                auditLogRepository.save(new AuditLog(ep1.getId(), "STATUS_CHANGE: DRAFT -> SUBMITTED_FOR_REVIEW", producer));
+                auditLogRepository.save(new AuditLog(ep1.getId(), "STATUS_CHANGE: SUBMITTED_FOR_REVIEW -> PUBLISHED", host));
 
                 // Episode 102 - Published
                 Episode ep2 = new Episode(
@@ -122,10 +136,11 @@ public class DataInitializer implements CommandLineRunner {
                 ep2.setCreatedBy(producer);
                 ep2.setStatus(EpisodeStatus.PUBLISHED);
                 ep2.setPodcastShow(show1);
+                ep2.setTeam(defaultTeam);
                 ep2 = saveAndInspect(ep2);
                 auditLogRepository.save(new AuditLog(ep2.getId(), "CREATE_EPISODE (Status: DRAFT)", producer));
-                auditLogRepository.save(new AuditLog(ep2.getId(), "STATUS_CHANGE: DRAFT -> VALIDATED", producer));
-                auditLogRepository.save(new AuditLog(ep2.getId(), "STATUS_CHANGE: VALIDATED -> PUBLISHED", admin));
+                auditLogRepository.save(new AuditLog(ep2.getId(), "STATUS_CHANGE: DRAFT -> SUBMITTED_FOR_REVIEW", producer));
+                auditLogRepository.save(new AuditLog(ep2.getId(), "STATUS_CHANGE: SUBMITTED_FOR_REVIEW -> PUBLISHED", admin));
 
                 // Episode 103 - Published
                 Episode ep3 = new Episode(
@@ -137,12 +152,13 @@ public class DataInitializer implements CommandLineRunner {
                 ep3.setCreatedBy(producer);
                 ep3.setStatus(EpisodeStatus.PUBLISHED);
                 ep3.setPodcastShow(show2);
+                ep3.setTeam(defaultTeam);
                 ep3 = saveAndInspect(ep3);
                 auditLogRepository.save(new AuditLog(ep3.getId(), "CREATE_EPISODE (Status: DRAFT)", producer));
-                auditLogRepository.save(new AuditLog(ep3.getId(), "STATUS_CHANGE: DRAFT -> VALIDATED", producer));
-                auditLogRepository.save(new AuditLog(ep3.getId(), "STATUS_CHANGE: VALIDATED -> PUBLISHED", producer));
+                auditLogRepository.save(new AuditLog(ep3.getId(), "STATUS_CHANGE: DRAFT -> SUBMITTED_FOR_REVIEW", producer));
+                auditLogRepository.save(new AuditLog(ep3.getId(), "STATUS_CHANGE: SUBMITTED_FOR_REVIEW -> PUBLISHED", producer));
 
-                // Episode 104 - Validated
+                // Episode 104 - APPROVED
                 Episode ep4 = new Episode(
                         "Ep 104: Scaling Distributed Databases under High Concurrency",
                         "Lessons learned from managing global database clusters during peak traffic spikes, setting up read replicas, connection pooling, and sharding strategies.",
@@ -150,13 +166,14 @@ public class DataInitializer implements CommandLineRunner {
                         LocalDate.now().plusDays(3)
                 );
                 ep4.setCreatedBy(producer);
-                ep4.setStatus(EpisodeStatus.VALIDATED);
+                ep4.setStatus(EpisodeStatus.APPROVED);
                 ep4.setPodcastShow(show1);
+                ep4.setTeam(defaultTeam);
                 ep4 = saveAndInspect(ep4);
                 auditLogRepository.save(new AuditLog(ep4.getId(), "CREATE_EPISODE (Status: DRAFT)", producer));
-                auditLogRepository.save(new AuditLog(ep4.getId(), "STATUS_CHANGE: DRAFT -> VALIDATED", producer));
+                auditLogRepository.save(new AuditLog(ep4.getId(), "STATUS_CHANGE: DRAFT -> APPROVED", producer));
 
-                // Episode 105 - Validated
+                // Episode 105 - SUBMITTED_FOR_REVIEW
                 Episode ep5 = new Episode(
                         "Ep 105: Designing Accessible Design Systems for Enterprise Apps",
                         "How design tokens, accessible ARIA components, and strict UI design guidelines speed up product development across cross-functional frontend teams.",
@@ -164,11 +181,11 @@ public class DataInitializer implements CommandLineRunner {
                         LocalDate.now().plusDays(7)
                 );
                 ep5.setCreatedBy(producer);
-                ep5.setStatus(EpisodeStatus.VALIDATED);
+                ep5.setStatus(EpisodeStatus.SUBMITTED_FOR_REVIEW);
                 ep5.setPodcastShow(show1);
+                ep5.setTeam(defaultTeam);
                 ep5 = saveAndInspect(ep5);
                 auditLogRepository.save(new AuditLog(ep5.getId(), "CREATE_EPISODE (Status: DRAFT)", producer));
-                auditLogRepository.save(new AuditLog(ep5.getId(), "STATUS_CHANGE: DRAFT -> VALIDATED", producer));
 
                 // Episode 106 - Draft
                 Episode ep6 = new Episode(
@@ -180,6 +197,7 @@ public class DataInitializer implements CommandLineRunner {
                 ep6.setCreatedBy(producer);
                 ep6.setStatus(EpisodeStatus.DRAFT);
                 ep6.setPodcastShow(show2);
+                ep6.setTeam(defaultTeam);
                 ep6 = saveAndInspect(ep6);
                 auditLogRepository.save(new AuditLog(ep6.getId(), "CREATE_EPISODE (Status: DRAFT)", producer));
 
@@ -193,6 +211,7 @@ public class DataInitializer implements CommandLineRunner {
                 ep7.setCreatedBy(producer);
                 ep7.setStatus(EpisodeStatus.DRAFT);
                 ep7.setPodcastShow(show2);
+                ep7.setTeam(defaultTeam);
                 ep7 = saveAndInspect(ep7);
                 auditLogRepository.save(new AuditLog(ep7.getId(), "CREATE_EPISODE (Status: DRAFT)", producer));
 
@@ -206,10 +225,11 @@ public class DataInitializer implements CommandLineRunner {
                 ep8.setCreatedBy(producer);
                 ep8.setStatus(EpisodeStatus.FAILED);
                 ep8.setPodcastShow(show2);
+                ep8.setTeam(defaultTeam);
                 ep8 = saveAndInspect(ep8);
                 auditLogRepository.save(new AuditLog(ep8.getId(), "CREATE_EPISODE (Status: DRAFT)", producer));
-                auditLogRepository.save(new AuditLog(ep8.getId(), "STATUS_CHANGE: DRAFT -> VALIDATED", producer));
-                auditLogRepository.save(new AuditLog(ep8.getId(), "STATUS_CHANGE: VALIDATED -> FAILED (Validation Error)", admin));
+                auditLogRepository.save(new AuditLog(ep8.getId(), "STATUS_CHANGE: DRAFT -> SUBMITTED_FOR_REVIEW", producer));
+                auditLogRepository.save(new AuditLog(ep8.getId(), "STATUS_CHANGE: SUBMITTED_FOR_REVIEW -> FAILED (Validation Error)", admin));
             }
         }
     }

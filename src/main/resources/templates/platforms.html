@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Platforms & Webhooks - Podcast Release System</title>
+    <title>Integrations & Webhooks - Podcast Release System</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -37,12 +37,16 @@
             <i class="bi bi-check-circle-fill me-2"></i><span th:text="${successMessage}"></span>
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
+        <div th:if="${errorMessage}" class="alert alert-danger alert-dismissible fade show rounded-3 mb-4 shadow-sm" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i><span th:text="${errorMessage}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
 
         <div class="alert alert-primary rounded-3 mb-4 shadow-sm d-flex align-items-center gap-3">
             <i class="bi bi-info-circle-fill fs-3 text-primary"></i>
             <div>
-                <strong class="d-block">Channel Integration Hub (Producer / Admin)</strong>
-                <span class="small text-dark">You are managing distribution channels as a <strong>Producer / Admin</strong>. When an episode is reviewed and approved by a Host, it automatically uploads to all connected channels below!</span>
+                <strong class="d-block">Multi-Channel Distribution Hub</strong>
+                <span class="small text-dark">Connect your YouTube channel or RSS platforms to automatically publish podcast episodes when approved and scheduled by your team!</span>
             </div>
         </div>
 
@@ -65,7 +69,7 @@
                         </a>
                     </div>
                     <div class="col-md-4">
-                        <a th:href="@{/platforms/oauth2/connect/transistor}" class="btn btn-purple text-white w-100 py-2.5 rounded-pill fw-semibold shadow-sm" style="background-color: #7c3aed;">
+                        <a th:href="@{/platforms/oauth2/connect/transistor}" class="btn text-white w-100 py-2.5 rounded-pill fw-semibold shadow-sm" style="background-color: #7c3aed;">
                             <i class="bi bi-soundwave me-2"></i> Connect Transistor
                         </a>
                     </div>
@@ -76,7 +80,7 @@
                         <tr>
                             <th>Platform Name</th>
                             <th>Type</th>
-                            <th>Connected Channel Handle</th>
+                            <th>Connected Account / Channel</th>
                             <th>OAuth Token Status</th>
                         </tr>
                     </thead>
@@ -85,14 +89,21 @@
                             <td class="fw-bold text-dark" th:text="${p.platformName}">YouTube</td>
                             <td><span class="badge bg-primary me-1" th:text="${p.platformType}">YOUTUBE</span></td>
                             <td>
-                                <span class="fw-semibold text-dark"><i class="bi bi-patch-check-fill text-primary me-1"></i><span th:text="${p.connectedAccountName != null ? p.connectedAccountName : (p.accountIdentifier != null ? p.accountIdentifier : 'Connected Channel')}">@channel</span></span>
+                                <span class="fw-semibold text-dark">
+                                    <i class="bi bi-patch-check-fill text-primary me-1"></i>
+                                    <span th:text="${p.connectedAccountName != null ? p.connectedAccountName : (p.accountIdentifier != null ? p.accountIdentifier : 'Connected Channel')}">@channel</span>
+                                </span>
                             </td>
-                            <td><span class="badge bg-success-subtle text-success border px-3 py-1.5 rounded-pill"><i class="bi bi-shield-check me-1"></i> OAuth 2.0 Active</span></td>
+                            <td>
+                                <span class="badge bg-success-subtle text-success border px-3 py-1.5 rounded-pill">
+                                    <i class="bi bi-shield-check me-1"></i> OAuth 2.0 Active
+                                </span>
+                            </td>
                         </tr>
                         <tr th:if="${#lists.isEmpty(platforms)}">
                             <td colspan="4" class="text-center text-muted py-4">
                                 <i class="bi bi-plug fs-2 text-slate-400 d-block mb-1"></i>
-                                No external publishing channels connected yet. Click any button above to authorization 1-Click connect!
+                                No external publishing channels connected yet. Click any button above to 1-Click connect!
                             </td>
                         </tr>
                     </tbody>

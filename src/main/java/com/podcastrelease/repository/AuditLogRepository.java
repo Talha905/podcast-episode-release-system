@@ -6,4 +6,5 @@ import java.util.List;
 
 public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
     List<AuditLog> findByEpisodeIdOrderByTimestampDesc(Long episodeId);
+    List<AuditLog> findByTeamIdOrderByTimestampDesc(Long teamId);
 }

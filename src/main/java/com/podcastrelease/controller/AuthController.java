@@ -1,7 +1,7 @@
 package com.podcastrelease.controller;
 
+import com.podcastrelease.model.PlatformRole;
 import com.podcastrelease.model.User;
-import com.podcastrelease.model.UserRole;
 import com.podcastrelease.repository.UserRepository;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -27,7 +27,8 @@ public class AuthController {
     public ResponseEntity<Map<String, Object>> register(@RequestBody Map<String, String> body) {
         String username = body.get("username");
         String password = body.get("password");
-        String roleStr = body.get("role");
+        String email = body.get("email");
+        String platformRoleStr = body.get("platformRole");
 
         if (username == null || username.trim().isEmpty() || password == null || password.trim().isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("message", "Username and password are required"));
@@ -37,17 +38,21 @@ public class AuthController {
             return ResponseEntity.badRequest().body(Map.of("message", "Username '" + username + "' is already taken"));
         }
 
-        UserRole role = UserRole.PRODUCER;
-        if (roleStr != null && !roleStr.trim().isEmpty()) {
+        PlatformRole platformRole = null;
+        if (platformRoleStr != null && !platformRoleStr.trim().isEmpty()) {
             try {
-                role = UserRole.valueOf(roleStr.trim().toUpperCase());
+                platformRole = PlatformRole.valueOf(platformRoleStr.trim().toUpperCase());
             } catch (Exception ignored) {}
         }
 
-        User user = new User(username.trim(), passwordEncoder.encode(password), role);
+        User user = new User(username.trim(), email != null ? email.trim() : null, passwordEncoder.encode(password), platformRole);
         userRepository.save(user);
 
-        return ResponseEntity.status(201).body(Map.of("message", "User registered successfully", "username", username, "role", role));
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", "User registered successfully");
+        response.put("username", username.trim());
+        response.put("platformRole", platformRole);
+        return ResponseEntity.status(201).body(response);
     }
 
     @PostMapping("/login")
@@ -62,7 +67,7 @@ public class AuthController {
         Map<String, Object> response = new HashMap<>();
         response.put("status", "SUCCESS");
         response.put("username", username);
-        response.put("role", user != null ? user.getRole() : null);
+        response.put("platformRole", user != null ? user.getPlatformRole() : null);
         return ResponseEntity.ok(response);
     }
 
@@ -77,7 +82,8 @@ public class AuthController {
 
         Map<String, Object> response = new HashMap<>();
         response.put("username", username);
-        response.put("role", user != null ? user.getRole() : null);
+        response.put("email", user != null ? user.getEmail() : null);
+        response.put("platformRole", user != null ? user.getPlatformRole() : null);
         return ResponseEntity.ok(response);
     }
 }
