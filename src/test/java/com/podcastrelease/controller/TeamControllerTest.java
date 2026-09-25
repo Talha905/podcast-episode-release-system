@@ -13,6 +13,7 @@ import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -64,8 +65,16 @@ class TeamControllerTest {
         userRepository.deleteAll();
 
         ownerUser = userRepository.save(new User("teamowner", "owner@example.com", "pass123"));
+        ownerUser.setEnabled(true);
+        userRepository.save(ownerUser);
+
         memberUser = userRepository.save(new User("teammember", "member@example.com", "pass123"));
+        memberUser.setEnabled(true);
+        userRepository.save(memberUser);
+
         outsiderUser = userRepository.save(new User("outsider", "outsider@example.com", "pass123"));
+        outsiderUser.setEnabled(true);
+        userRepository.save(outsiderUser);
 
         sampleTeam = teamRepository.save(new Team("Alpha Team", "Alpha team description"));
 
@@ -85,7 +94,6 @@ class TeamControllerTest {
     @Test
     @WithMockUser(username = "outsider")
     void getTeamById_returns404ForNonMember() throws Exception {
-        // Must strictly return 404 NOT FOUND for unauthorized isolation
         mockMvc.perform(get("/api/teams/" + sampleTeam.getId()))
                 .andExpect(status().isNotFound());
     }
@@ -100,7 +108,7 @@ class TeamControllerTest {
     @Test
     @WithMockUser(username = "teamowner")
     void createTeam_success() throws Exception {
-        mockMvc.perform(post("/api/teams")
+        mockMvc.perform(post("/api/teams").with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\": \"Beta Team\", \"description\": \"Beta desc\"}"))
                 .andExpect(status().isCreated())
@@ -111,8 +119,7 @@ class TeamControllerTest {
     @Test
     @WithMockUser(username = "teamowner")
     void inviteMemberAndAccept_success() throws Exception {
-        // 1. Create invite as owner
-        String inviteResponse = mockMvc.perform(post("/api/teams/" + sampleTeam.getId() + "/invites")
+        String inviteResponse = mockMvc.perform(post("/api/teams/" + sampleTeam.getId() + "/invites").with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\": \"outsider@example.com\", \"role\": \"EDITOR\"}"))
                 .andExpect(status().isCreated())
@@ -122,14 +129,37 @@ class TeamControllerTest {
 
         String token = inviteResponse.split("\"token\":\"")[1].split("\"")[0];
 
-        // 2. Outsider accepts invite
-        mockMvc.perform(post("/api/invites/" + token + "/accept"))
+        mockMvc.perform(post("/api/invites/" + token + "/accept").with(csrf()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.role").value("EDITOR"));
 
-        // 3. Outsider can now view team details
         mockMvc.perform(get("/api/teams/" + sampleTeam.getId()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.myRole").value("EDITOR"));
+    }
+
+    @Test
+    @WithMockUser(username = "teamowner")
+    void getTeamsView_returns200() throws Exception {
+        mockMvc.perform(get("/teams"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("teams"))
+                .andExpect(model().attributeExists("myTeams", "activeTeam", "members"));
+    }
+
+    @Test
+    @WithMockUser(username = "teamowner")
+    void inviteMemberWebAndAcceptWeb_success() throws Exception {
+        mockMvc.perform(post("/teams/" + sampleTeam.getId() + "/invite").with(csrf())
+                        .param("email", "outsider@example.com")
+                        .param("role", "RELEASE_MANAGER"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(flash().attributeExists("createdInviteUrl", "successMessage"));
+
+        var invite = teamInviteRepository.findByTeamId(sampleTeam.getId()).get(0);
+
+        mockMvc.perform(get("/invites/" + invite.getToken() + "/accept"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(flash().attribute("successMessage", "Successfully joined team 'Alpha Team' as RELEASE_MANAGER!"));
     }
 }

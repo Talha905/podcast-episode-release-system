@@ -22,6 +22,22 @@ public interface EpisodeRepository extends JpaRepository<Episode, Long>, JpaSpec
     List<Episode> findByTeamIdAndClaimedByIsNull(Long teamId);
 
     List<Episode> findByPodcastShowIdAndStatus(Long podcastShowId, EpisodeStatus status);
+    List<Episode> findByTeamIdIn(List<Long> teamIds);
+    long countByTeamIdInAndStatus(List<Long> teamIds, EpisodeStatus status);
+    long countByTeamIdIn(List<Long> teamIds);
+
+    @Query("SELECT e FROM Episode e WHERE " +
+           "e.team.id IN :teamIds AND " +
+           "(:title IS NULL OR LOWER(e.title) LIKE LOWER(CONCAT('%', :title, '%'))) AND " +
+           "(:status IS NULL OR e.status = :status) AND " +
+           "(:fromDate IS NULL OR e.publishDate >= :fromDate) AND " +
+           "(:toDate IS NULL OR e.publishDate <= :toDate) " +
+           "ORDER BY e.createdAt DESC")
+    List<Episode> searchEpisodesInTeams(@Param("teamIds") List<Long> teamIds,
+                                        @Param("title") String title,
+                                        @Param("status") EpisodeStatus status,
+                                        @Param("fromDate") LocalDate fromDate,
+                                        @Param("toDate") LocalDate toDate);
 
     @Query("SELECT e FROM Episode e WHERE " +
            "(:teamId IS NULL OR e.team.id = :teamId) AND " +

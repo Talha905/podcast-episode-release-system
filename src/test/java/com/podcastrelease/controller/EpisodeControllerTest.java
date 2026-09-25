@@ -1,9 +1,8 @@
 package com.podcastrelease.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.podcastrelease.model.Episode;
-import com.podcastrelease.model.EpisodeStatus;
-import com.podcastrelease.repository.EpisodeRepository;
+import com.podcastrelease.model.*;
+import com.podcastrelease.repository.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,11 +29,37 @@ class EpisodeControllerTest {
     private EpisodeRepository episodeRepository;
 
     @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private TeamRepository teamRepository;
+
+    @Autowired
+    private TeamMembershipRepository teamMembershipRepository;
+
+    @Autowired
+    private AuditLogRepository auditLogRepository;
+
+    @Autowired
     private ObjectMapper objectMapper;
+
+    private User producerUser;
+    private Team testTeam;
 
     @BeforeEach
     void setUp() {
+        auditLogRepository.deleteAll();
         episodeRepository.deleteAll();
+        teamMembershipRepository.deleteAll();
+        teamRepository.deleteAll();
+        userRepository.deleteAll();
+
+        producerUser = userRepository.save(new User("producer", "producer@example.com", "pass"));
+        producerUser.setEnabled(true);
+        userRepository.save(producerUser);
+
+        testTeam = teamRepository.save(new Team("Test Team", "Test Desc"));
+        teamMembershipRepository.save(new TeamMembership(testTeam, producerUser, TeamRole.OWNER));
     }
 
     @Test
@@ -55,6 +80,7 @@ class EpisodeControllerTest {
     @WithMockUser(username = "producer", roles = {"PRODUCER"})
     void getEpisodes_returnsEpisodeList() throws Exception {
         Episode episode = new Episode("List Test Ep", "Desc", "http://audio.mp3", LocalDate.now());
+        episode.setTeam(testTeam);
         episodeRepository.save(episode);
 
         mockMvc.perform(get("/api/episodes"))
@@ -67,6 +93,7 @@ class EpisodeControllerTest {
     @WithMockUser(username = "producer", roles = {"PRODUCER"})
     void updateStatus_patchTransition() throws Exception {
         Episode episode = new Episode("Patch Status Ep", "Desc", "https://storage.com/file.mp3", LocalDate.now());
+        episode.setTeam(testTeam);
         Episode saved = episodeRepository.save(episode);
 
         mockMvc.perform(patch("/api/episodes/" + saved.getId() + "/status")
@@ -88,6 +115,7 @@ class EpisodeControllerTest {
     @WithMockUser(username = "producer", roles = {"PRODUCER"})
     void getEpisodeDetailView_rendersDetailHtmlWithoutErrors() throws Exception {
         Episode episode = new Episode("Detail View Test Ep", "Description text", "/audio/sample.mp3", LocalDate.now());
+        episode.setTeam(testTeam);
         episode.setStatus(EpisodeStatus.VALIDATED);
         episode.setReviewNotes("Looks good!");
         Episode saved = episodeRepository.save(episode);

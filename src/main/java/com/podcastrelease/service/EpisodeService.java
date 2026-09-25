@@ -11,10 +11,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class EpisodeService {
@@ -74,6 +76,14 @@ public class EpisodeService {
 
     public List<Episode> findAll() {
         return episodeRepository.findAll();
+    }
+
+    public List<Episode> findAll(User user) {
+        List<Long> teamIds = getUserTeamIds(user);
+        if (teamIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return episodeRepository.findByTeamIdIn(teamIds);
     }
 
     public Episode findById(Long id) {
@@ -336,6 +346,15 @@ public class EpisodeService {
         return episodeRepository.searchEpisodes(searchTitle, status, fromDate, toDate);
     }
 
+    public List<Episode> search(String title, EpisodeStatus status, LocalDate fromDate, LocalDate toDate, User user) {
+        List<Long> teamIds = getUserTeamIds(user);
+        if (teamIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+        String searchTitle = (title != null && !title.trim().isEmpty()) ? title.trim() : null;
+        return episodeRepository.searchEpisodesInTeams(teamIds, searchTitle, status, fromDate, toDate);
+    }
+
     public Map<String, Object> getDashboardSummary() {
         Map<String, Object> summary = new HashMap<>();
         long draftCount = episodeRepository.countByStatus(EpisodeStatus.DRAFT);
@@ -350,6 +369,42 @@ public class EpisodeService {
         summary.put("FAILED", failedCount);
         summary.put("TOTAL", total);
         return summary;
+    }
+
+    public Map<String, Object> getDashboardSummary(User user) {
+        Map<String, Object> summary = new HashMap<>();
+        List<Long> teamIds = getUserTeamIds(user);
+        if (teamIds.isEmpty()) {
+            summary.put("DRAFT", 0L);
+            summary.put("VALIDATED", 0L);
+            summary.put("PUBLISHED", 0L);
+            summary.put("FAILED", 0L);
+            summary.put("TOTAL", 0L);
+            return summary;
+        }
+
+        long draftCount = episodeRepository.countByTeamIdInAndStatus(teamIds, EpisodeStatus.DRAFT);
+        long validatedCount = episodeRepository.countByTeamIdInAndStatus(teamIds, EpisodeStatus.VALIDATED) + episodeRepository.countByTeamIdInAndStatus(teamIds, EpisodeStatus.APPROVED);
+        long publishedCount = episodeRepository.countByTeamIdInAndStatus(teamIds, EpisodeStatus.PUBLISHED);
+        long failedCount = episodeRepository.countByTeamIdInAndStatus(teamIds, EpisodeStatus.FAILED);
+        long total = episodeRepository.countByTeamIdIn(teamIds);
+
+        summary.put("DRAFT", draftCount);
+        summary.put("VALIDATED", validatedCount);
+        summary.put("PUBLISHED", publishedCount);
+        summary.put("FAILED", failedCount);
+        summary.put("TOTAL", total);
+        return summary;
+    }
+
+    private List<Long> getUserTeamIds(User user) {
+        if (user == null) {
+            return Collections.emptyList();
+        }
+        return teamMembershipRepository.findByUserId(user.getId())
+                .stream()
+                .map(tm -> tm.getTeam().getId())
+                .collect(Collectors.toList());
     }
 
     public List<AuditLog> getAuditLogs(Long episodeId) {

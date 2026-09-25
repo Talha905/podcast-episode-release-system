@@ -41,12 +41,14 @@ public class EpisodeController {
             @RequestParam(required = false) String title,
             @RequestParam(required = false) EpisodeStatus status,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            Authentication authentication) {
 
+        User currentUser = getCurrentUser(authentication);
         if (title != null || status != null || from != null || to != null) {
-            return ResponseEntity.ok(episodeService.search(title, status, from, to));
+            return ResponseEntity.ok(episodeService.search(title, status, from, to, currentUser));
         }
-        return ResponseEntity.ok(episodeService.findAll());
+        return ResponseEntity.ok(episodeService.findAll(currentUser));
     }
 
     @GetMapping("/episodes/{id}")
@@ -105,8 +107,9 @@ public class EpisodeController {
     }
 
     @GetMapping("/dashboard/summary")
-    public ResponseEntity<Map<String, Object>> getSummary() {
-        return ResponseEntity.ok(episodeService.getDashboardSummary());
+    public ResponseEntity<Map<String, Object>> getSummary(Authentication authentication) {
+        User currentUser = getCurrentUser(authentication);
+        return ResponseEntity.ok(episodeService.getDashboardSummary(currentUser));
     }
 
     @GetMapping("/episodes/{id}/audit")

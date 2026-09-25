@@ -1,7 +1,9 @@
-package com.podcastrelease.service;
+package com.podcastrelease;
 
 import com.podcastrelease.model.*;
 import com.podcastrelease.repository.*;
+import com.podcastrelease.service.DistributionService;
+import com.podcastrelease.service.PlatformOAuthService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
