@@ -1,6 +1,7 @@
 package com.podcastrelease.controller;
 
 import com.podcastrelease.model.*;
+import com.podcastrelease.repository.NotificationRepository;
 import com.podcastrelease.repository.TeamInviteRepository;
 import com.podcastrelease.repository.TeamMembershipRepository;
 import com.podcastrelease.repository.UserRepository;
@@ -22,15 +23,18 @@ public class TeamInviteController {
     private final TeamMembershipRepository teamMembershipRepository;
     private final UserRepository userRepository;
     private final TeamSecurityService teamSecurityService;
+    private final NotificationRepository notificationRepository;
 
     public TeamInviteController(TeamInviteRepository teamInviteRepository,
                                 TeamMembershipRepository teamMembershipRepository,
                                 UserRepository userRepository,
-                                TeamSecurityService teamSecurityService) {
+                                TeamSecurityService teamSecurityService,
+                                NotificationRepository notificationRepository) {
         this.teamInviteRepository = teamInviteRepository;
         this.teamMembershipRepository = teamMembershipRepository;
         this.userRepository = userRepository;
         this.teamSecurityService = teamSecurityService;
+        this.notificationRepository = notificationRepository;
     }
 
     @PostMapping("/api/teams/{id}/invites")
@@ -60,6 +64,17 @@ public class TeamInviteController {
         TeamInvite invite = new TeamInvite(team, email.trim(), role, token, currentUser);
         teamInviteRepository.save(invite);
 
+        userRepository.findByEmail(email.trim()).ifPresent(recipient -> {
+            Notification notification = new Notification(
+                    recipient,
+                    "Team Invitation",
+                    "You have been invited to join team '" + team.getName() + "' as " + invite.getRole(),
+                    "TEAM_INVITE",
+                    "/invites/" + token + "/accept"
+            );
+            notificationRepository.save(notification);
+        });
+
         Map<String, Object> response = new HashMap<>();
         response.put("id", invite.getId());
         response.put("teamId", team.getId());
@@ -70,6 +85,17 @@ public class TeamInviteController {
         response.put("acceptUrl", "/api/invites/" + invite.getToken() + "/accept");
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @PostMapping("/api/invites/{token}/decline")
+    @Transactional
+    public ResponseEntity<Map<String, Object>> declineInvite(@PathVariable String token) {
+        TeamInvite invite = teamInviteRepository.findByToken(token).orElse(null);
+        if (invite != null) {
+            teamInviteRepository.delete(invite);
+            return ResponseEntity.ok(Map.of("message", "Invitation declined successfully"));
+        }
+        return ResponseEntity.badRequest().body(Map.of("message", "Invalid or expired invitation token"));
     }
 
     @GetMapping("/api/teams/{id}/invites")

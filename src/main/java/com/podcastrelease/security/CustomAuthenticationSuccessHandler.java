@@ -30,6 +30,7 @@ public class CustomAuthenticationSuccessHandler extends SavedRequestAwareAuthent
         this.teamInviteRepository = teamInviteRepository;
         this.teamMembershipRepository = teamMembershipRepository;
         this.userRepository = userRepository;
+        setDefaultTargetUrl("/dashboard");
     }
 
     @Override

@@ -30,6 +30,8 @@ public class WebController {
     private final TeamMembershipRepository teamMembershipRepository;
     private final TeamInviteRepository teamInviteRepository;
     private final TeamSecurityService teamSecurityService;
+    private final NotificationRepository notificationRepository;
+    private final AuditLogRepository auditLogRepository;
 
     public WebController(EpisodeService episodeService,
                          UserRepository userRepository,
@@ -39,7 +41,9 @@ public class WebController {
                          TeamRepository teamRepository,
                          TeamMembershipRepository teamMembershipRepository,
                          TeamInviteRepository teamInviteRepository,
-                         TeamSecurityService teamSecurityService) {
+                         TeamSecurityService teamSecurityService,
+                         NotificationRepository notificationRepository,
+                         AuditLogRepository auditLogRepository) {
         this.episodeService = episodeService;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
@@ -49,6 +53,8 @@ public class WebController {
         this.teamMembershipRepository = teamMembershipRepository;
         this.teamInviteRepository = teamInviteRepository;
         this.teamSecurityService = teamSecurityService;
+        this.notificationRepository = notificationRepository;
+        this.auditLogRepository = auditLogRepository;
     }
 
     @GetMapping("/login")
@@ -122,6 +128,7 @@ public class WebController {
 
     @GetMapping({"/", "/episodes", "/dashboard"})
     public String dashboard(
+            @RequestParam(required = false) Long teamId,
             @RequestParam(required = false) String title,
             @RequestParam(required = false) EpisodeStatus status,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
@@ -129,10 +136,64 @@ public class WebController {
             Model model,
             Authentication authentication) {
 
-        User currentUser = authentication != null ? userRepository.findByUsername(authentication.getName()).orElse(null) : null;
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return "redirect:/login";
+        }
+
+        User currentUser = userRepository.findByUsername(authentication.getName()).orElse(null);
+        if (currentUser == null) return "redirect:/login";
+
+        List<TeamMembership> memberships = teamMembershipRepository.findByUserId(currentUser.getId());
+        List<Team> myTeams = memberships.stream().map(TeamMembership::getTeam).collect(Collectors.toList());
+
+        Map<Long, TeamRole> myRoles = new HashMap<>();
+        for (TeamMembership m : memberships) {
+            myRoles.put(m.getTeam().getId(), m.getRole());
+        }
+
+        Team activeTeam = null;
+        if (teamId != null) {
+            activeTeam = myTeams.stream().filter(t -> t.getId().equals(teamId)).findFirst().orElse(null);
+        }
+        if (activeTeam == null && !myTeams.isEmpty()) {
+            activeTeam = myTeams.get(0);
+        }
+
+        TeamRole myRoleInActiveTeam = activeTeam != null ? myRoles.get(activeTeam.getId()) : null;
+
         List<Episode> episodes = episodeService.search(title, status, from, to, currentUser);
+
+        if (activeTeam != null) {
+            final Long activeTeamId = activeTeam.getId();
+            episodes = episodes.stream()
+                    .filter(e -> e.getTeam() != null && e.getTeam().getId().equals(activeTeamId))
+                    .collect(Collectors.toList());
+        }
+
+        // Kanban Column Buckets
+        List<Episode> draftEpisodes = episodes.stream().filter(e -> e.getStatus() == EpisodeStatus.DRAFT).collect(Collectors.toList());
+        List<Episode> submittedEpisodes = episodes.stream().filter(e -> e.getStatus() == EpisodeStatus.SUBMITTED_FOR_REVIEW || e.getStatus() == EpisodeStatus.PENDING_EDIT).collect(Collectors.toList());
+        List<Episode> inReviewEpisodes = episodes.stream().filter(e -> e.getStatus() == EpisodeStatus.IN_EDITING || e.getStatus() == EpisodeStatus.EDITED || e.getStatus() == EpisodeStatus.NEEDS_REVISION).collect(Collectors.toList());
+        List<Episode> approvedEpisodes = episodes.stream().filter(e -> e.getStatus() == EpisodeStatus.APPROVED || e.getStatus() == EpisodeStatus.VALIDATED).collect(Collectors.toList());
+        List<Episode> scheduledEpisodes = episodes.stream().filter(e -> e.getStatus() == EpisodeStatus.SCHEDULED).collect(Collectors.toList());
+        List<Episode> publishedEpisodes = episodes.stream().filter(e -> e.getStatus() == EpisodeStatus.PUBLISHED).collect(Collectors.toList());
+        List<Episode> failedEpisodes = episodes.stream().filter(e -> e.getStatus() == EpisodeStatus.FAILED || e.getStatus() == EpisodeStatus.REJECTED).collect(Collectors.toList());
+
         model.addAttribute("episodes", episodes);
+        model.addAttribute("draftEpisodes", draftEpisodes);
+        model.addAttribute("submittedEpisodes", submittedEpisodes);
+        model.addAttribute("inReviewEpisodes", inReviewEpisodes);
+        model.addAttribute("approvedEpisodes", approvedEpisodes);
+        model.addAttribute("scheduledEpisodes", scheduledEpisodes);
+        model.addAttribute("publishedEpisodes", publishedEpisodes);
+        model.addAttribute("failedEpisodes", failedEpisodes);
+
         model.addAttribute("summary", episodeService.getDashboardSummary(currentUser));
+        model.addAttribute("myTeams", myTeams);
+        model.addAttribute("myRoles", myRoles);
+        model.addAttribute("activeTeam", activeTeam);
+        model.addAttribute("myRoleInActiveTeam", myRoleInActiveTeam);
+
         model.addAttribute("titleFilter", title);
         model.addAttribute("statusFilter", status);
         model.addAttribute("fromDateFilter", from);
@@ -184,6 +245,7 @@ public class WebController {
 
         List<TeamMembership> members = List.of();
         List<TeamInvite> pendingInvites = List.of();
+        List<AuditLog> auditLogs = List.of();
 
         if (activeTeam != null) {
             members = teamMembershipRepository.findByTeamId(activeTeam.getId());
@@ -191,6 +253,7 @@ public class WebController {
                     .stream()
                     .filter(i -> !i.isAccepted() && i.getExpiresAt().isAfter(LocalDateTime.now()))
                     .collect(Collectors.toList());
+            auditLogs = auditLogRepository.findByTeamIdOrderByTimestampDesc(activeTeam.getId());
         }
 
         model.addAttribute("currentUser", currentUser);
@@ -199,6 +262,7 @@ public class WebController {
         model.addAttribute("activeTeam", activeTeam);
         model.addAttribute("members", members);
         model.addAttribute("pendingInvites", pendingInvites);
+        model.addAttribute("auditLogs", auditLogs);
 
         return "teams";
     }
@@ -267,6 +331,18 @@ public class WebController {
         TeamInvite invite = new TeamInvite(team, email.trim(), assignedRole, token, currentUser);
         teamInviteRepository.save(invite);
 
+        final TeamRole finalAssignedRole = assignedRole;
+        userRepository.findByEmail(email.trim()).ifPresent(recipient -> {
+            Notification notification = new Notification(
+                    recipient,
+                    "Team Invitation",
+                    "You have been invited to join team '" + team.getName() + "' as " + finalAssignedRole,
+                    "TEAM_INVITE",
+                    "/invites/" + token + "/accept"
+            );
+            notificationRepository.save(notification);
+        });
+
         String acceptUrl = "/invites/" + token + "/accept";
         redirectAttributes.addFlashAttribute("createdInviteUrl", acceptUrl);
         redirectAttributes.addFlashAttribute("successMessage", "Invitation created for " + email.trim() + " as " + assignedRole + "!");
@@ -321,22 +397,64 @@ public class WebController {
         return "redirect:/login";
     }
 
+    @PostMapping("/invites/{token}/decline")
+    public String declineInviteWeb(
+            @PathVariable String token,
+            RedirectAttributes redirectAttributes) {
+
+        TeamInvite invite = teamInviteRepository.findByToken(token).orElse(null);
+        if (invite != null) {
+            teamInviteRepository.delete(invite);
+            redirectAttributes.addFlashAttribute("successMessage", "Invitation declined.");
+        } else {
+            redirectAttributes.addFlashAttribute("errorMessage", "Invitation invalid or already processed.");
+        }
+        return "redirect:/dashboard";
+    }
+
     @GetMapping("/episodes/new")
-    public String newEpisodeForm(Model model) {
+    public String newEpisodeForm(
+            @RequestParam(required = false) Long teamId,
+            Model model,
+            Authentication authentication) {
+
+        User currentUser = authentication != null ? userRepository.findByUsername(authentication.getName()).orElse(null) : null;
+        List<Team> myTeams = List.of();
+        Team activeTeam = null;
+
+        if (currentUser != null) {
+            List<TeamMembership> memberships = teamMembershipRepository.findByUserId(currentUser.getId());
+            myTeams = memberships.stream().map(TeamMembership::getTeam).collect(Collectors.toList());
+            if (teamId != null) {
+                final Long targetTeamId = teamId;
+                activeTeam = myTeams.stream().filter(t -> t.getId().equals(targetTeamId)).findFirst().orElse(null);
+            }
+            if (activeTeam == null && !myTeams.isEmpty()) {
+                activeTeam = myTeams.get(0);
+            }
+        }
+
         model.addAttribute("episode", new Episode());
+        model.addAttribute("myTeams", myTeams);
+        model.addAttribute("activeTeam", activeTeam);
         model.addAttribute("shows", podcastShowRepository.findAll());
+        model.addAttribute("currentUser", currentUser);
         return "create";
     }
 
     @PostMapping("/episodes/create")
     public String createEpisode(
             @ModelAttribute Episode episode,
+            @RequestParam(value = "teamId", required = false) Long teamId,
             @RequestParam(value = "podcastShowId", required = false) Long podcastShowId,
             @RequestParam(value = "audioFile", required = false) org.springframework.web.multipart.MultipartFile audioFile,
             Authentication authentication,
             RedirectAttributes redirectAttributes) {
 
         try {
+            if (teamId != null) {
+                teamRepository.findById(teamId).ifPresent(episode::setTeam);
+            }
             if (podcastShowId != null) {
                 podcastShowRepository.findById(podcastShowId).ifPresent(episode::setPodcastShow);
             }
@@ -364,6 +482,50 @@ public class WebController {
         model.addAttribute("currentUser", currentUser);
 
         return "detail";
+    }
+
+    @PostMapping("/episodes/{id}/claim")
+    public String claimEpisodeWeb(
+            @PathVariable Long id,
+            Authentication authentication,
+            jakarta.servlet.http.HttpServletRequest request,
+            RedirectAttributes redirectAttributes) {
+
+        try {
+            if (authentication != null && authentication.isAuthenticated()) {
+                Episode claimed = episodeService.claimEpisode(id, authentication.getName());
+                redirectAttributes.addFlashAttribute("successMessage", "Episode '" + claimed.getTitle() + "' claimed successfully!");
+            }
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
+        }
+        String referer = request.getHeader("Referer");
+        if (referer != null && !referer.isEmpty() && referer.contains("/episodes/")) {
+            return "redirect:/episodes/" + id;
+        }
+        return "redirect:/dashboard";
+    }
+
+    @PostMapping("/episodes/{id}/unclaim")
+    public String unclaimEpisodeWeb(
+            @PathVariable Long id,
+            Authentication authentication,
+            jakarta.servlet.http.HttpServletRequest request,
+            RedirectAttributes redirectAttributes) {
+
+        try {
+            if (authentication != null && authentication.isAuthenticated()) {
+                Episode unclaimed = episodeService.unclaimEpisode(id, authentication.getName());
+                redirectAttributes.addFlashAttribute("successMessage", "Episode '" + unclaimed.getTitle() + "' unclaimed.");
+            }
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
+        }
+        String referer = request.getHeader("Referer");
+        if (referer != null && !referer.isEmpty() && referer.contains("/episodes/")) {
+            return "redirect:/episodes/" + id;
+        }
+        return "redirect:/dashboard";
     }
 
     @GetMapping("/episodes/{id}/edit")
@@ -420,6 +582,67 @@ public class WebController {
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
         }
         return "redirect:/episodes/" + id;
+    }
+
+    @GetMapping("/profile")
+    public String profilePage(Model model, Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return "redirect:/login";
+        }
+        User currentUser = userRepository.findByUsername(authentication.getName()).orElse(null);
+        if (currentUser == null) {
+            return "redirect:/login";
+        }
+        List<TeamMembership> memberships = teamMembershipRepository.findByUserId(currentUser.getId());
+        model.addAttribute("currentUser", currentUser);
+        model.addAttribute("memberships", memberships);
+        return "profile";
+    }
+
+    @PostMapping("/profile/password")
+    public String changePassword(
+            @RequestParam String oldPassword,
+            @RequestParam String newPassword,
+            @RequestParam String confirmPassword,
+            Authentication authentication,
+            RedirectAttributes redirectAttributes) {
+
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return "redirect:/login";
+        }
+
+        User currentUser = userRepository.findByUsername(authentication.getName()).orElse(null);
+        if (currentUser == null) {
+            return "redirect:/login";
+        }
+
+        if (oldPassword == null || oldPassword.trim().isEmpty() ||
+            newPassword == null || newPassword.trim().isEmpty() ||
+            confirmPassword == null || confirmPassword.trim().isEmpty()) {
+            redirectAttributes.addFlashAttribute("errorMessage", "All password fields are required.");
+            return "redirect:/profile";
+        }
+
+        if (!passwordEncoder.matches(oldPassword, currentUser.getPasswordHash())) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Current password is incorrect.");
+            return "redirect:/profile";
+        }
+
+        if (!newPassword.equals(confirmPassword)) {
+            redirectAttributes.addFlashAttribute("errorMessage", "New password and confirmation do not match.");
+            return "redirect:/profile";
+        }
+
+        if (newPassword.length() < 6) {
+            redirectAttributes.addFlashAttribute("errorMessage", "New password must be at least 6 characters long.");
+            return "redirect:/profile";
+        }
+
+        currentUser.setPasswordHash(passwordEncoder.encode(newPassword));
+        userRepository.save(currentUser);
+
+        redirectAttributes.addFlashAttribute("successMessage", "Password updated successfully!");
+        return "redirect:/profile";
     }
 
     @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)

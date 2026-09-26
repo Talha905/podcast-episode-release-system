@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Integrations & Webhooks - Podcast Release System</title>
+    <title>My Profile - Podcast Episode Release System</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -13,8 +13,9 @@
         .sidebar .nav-link { color: #64748b; font-weight: 600; border-radius: 10px; padding: 0.6rem 1rem; margin-bottom: 0.2rem; }
         .sidebar .nav-link:hover, .sidebar .nav-link.active { color: #2563eb; background-color: #eff6ff; }
         .topbar { background-color: #ffffff; border-bottom: 1px solid #e2e8f0; height: 70px; }
-        .card-custom { border: none; border-radius: 14px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); background: #ffffff; }
+        .card-custom { border: none; border-radius: 14px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); background: #ffffff; overflow: hidden; }
         .avatar-circle { width: 36px; height: 36px; background-color: #3b82f6; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem; }
+        .avatar-lg { width: 72px; height: 72px; background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 2rem; }
     </style>
 </head>
 <body>
@@ -78,7 +79,7 @@
                     </a>
                 </li>
                 <li>
-                    <a th:href="@{/platforms}" class="nav-link active">
+                    <a th:href="@{/platforms}" class="nav-link">
                         <i class="bi bi-share me-2"></i> Integrations
                     </a>
                 </li>
@@ -141,150 +142,86 @@
             </header>
 
             <main class="p-4 flex-grow-1">
-                <!-- Alerts -->
-                <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show rounded-3 mb-4 shadow-sm border-0" role="alert">
-                    <i class="bi bi-check-circle-fill me-2"></i><span th:text="${successMessage}"></span>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-                <div th:if="${errorMessage}" class="alert alert-danger alert-dismissible fade show rounded-3 mb-4 shadow-sm border-0" role="alert">
-                    <i class="bi bi-exclamation-triangle-fill me-2"></i><span th:text="${errorMessage}"></span>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-
-                <!-- Page Header Card -->
-                <div class="card card-custom p-4 mb-4">
-                    <div class="d-flex align-items-center gap-3">
-                        <div class="bg-primary-subtle text-primary p-3 rounded-circle">
-                            <i class="bi bi-share fs-3"></i>
-                        </div>
-                        <div>
-                            <h4 class="fw-bold mb-1">Integrations & Distribution Hub</h4>
-                            <p class="text-muted small mb-0">Connect external channels via 1-Click OAuth 2.0 and configure real-time Slack/Discord notification webhooks.</p>
-                        </div>
+                <div class="container" style="max-width: 900px;">
+                    <!-- Alert Messages -->
+                    <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show rounded-3 mb-4" role="alert">
+                        <i class="bi bi-check-circle-fill me-2"></i>
+                        <span th:text="${successMessage}"></span>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                     </div>
-                </div>
+                    <div th:if="${errorMessage}" class="alert alert-danger alert-dismissible fade show rounded-3 mb-4" role="alert">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        <span th:text="${errorMessage}"></span>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
 
-                <!-- Connected Platform Accounts Section -->
-                <div class="card card-custom overflow-hidden mb-4">
-                    <div class="p-4 border-bottom">
-                        <h5 class="fw-bold mb-1 text-dark"><i class="bi bi-plugin text-primary me-2"></i>Direct Platform Integrations (OAuth 2.0 1-Click Connect)</h5>
-                        <p class="text-muted small mb-3">Connect your podcast channels with 1-click authorization — no manual API keys required.</p>
+                    <div class="row g-4">
+                        <!-- Profile Card -->
+                        <div class="col-md-5">
+                            <div class="card card-custom p-4 text-center mb-4">
+                                <div class="avatar-lg mx-auto mb-3" th:text="${#strings.substring(currentUser.username, 0, 1).toUpperCase()}">U</div>
+                                <h4 class="fw-bold mb-1" th:text="${currentUser.username}">Username</h4>
+                                <p class="text-muted small mb-3" th:text="${currentUser.email}">user@example.com</p>
+                                <div class="d-flex justify-content-center gap-2">
+                                    <span class="badge bg-primary-subtle text-primary px-3 py-2 rounded-pill" th:text="${currentUser.platformRole}">USER</span>
+                                    <span class="badge bg-success-subtle text-success px-3 py-2 rounded-pill" th:if="${currentUser.enabled}">Active</span>
+                                    <span class="badge bg-danger-subtle text-danger px-3 py-2 rounded-pill" th:if="${!currentUser.enabled}">Unverified</span>
+                                </div>
+                            </div>
 
-                        <!-- 1-Click OAuth Action Bar -->
-                        <div class="row g-3 p-3 bg-light rounded-3 border align-items-center">
-                            <div class="col-md-4">
-                                <a th:href="@{/platforms/oauth2/connect/youtube}" class="btn btn-outline-danger w-100 py-2 rounded-pill fw-semibold border-2 d-flex align-items-center justify-content-center gap-2">
-                                    <i class="bi bi-youtube fs-5"></i> Connect YouTube Channel
-                                </a>
-                            </div>
-                            <div class="col-md-4">
-                                <a th:href="@{/platforms/oauth2/connect/buzzsprout}" class="btn btn-outline-warning text-dark w-100 py-2 rounded-pill fw-semibold border-2 d-flex align-items-center justify-content-center gap-2">
-                                    <i class="bi bi-broadcast fs-5"></i> Connect Buzzsprout
-                                </a>
-                            </div>
-                            <div class="col-md-4">
-                                <a th:href="@{/platforms/oauth2/connect/transistor}" class="btn btn-outline-primary w-100 py-2 rounded-pill fw-semibold border-2 d-flex align-items-center justify-content-center gap-2">
-                                    <i class="bi bi-soundwave fs-5"></i> Connect Transistor
-                                </a>
+                            <!-- Team Memberships Card -->
+                            <div class="card card-custom p-4">
+                                <h6 class="fw-bold mb-3"><i class="bi bi-people me-2 text-primary"></i> My Team Memberships</h6>
+                                <div th:if="${memberships == null or #lists.isEmpty(memberships)}" class="text-muted small">
+                                    Not a member of any teams yet.
+                                </div>
+                                <ul class="list-group list-group-flush" th:if="${memberships != null and not #lists.isEmpty(memberships)}">
+                                    <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-2 border-0" th:each="m : ${memberships}">
+                                        <div>
+                                            <strong class="small d-block" th:text="${m.team.name}">Team Name</strong>
+                                            <span class="text-muted" style="font-size: 0.75rem;" th:text="${m.team.description}">Description</span>
+                                        </div>
+                                        <span class="badge bg-secondary-subtle text-secondary rounded-pill" style="font-size: 0.7rem;" th:text="${m.role}">ROLE</span>
+                                    </li>
+                                </ul>
                             </div>
                         </div>
-                    </div>
 
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0">
-                            <thead class="table-light text-secondary text-uppercase small" style="font-size: 0.75rem; letter-spacing: 0.05em;">
-                                <tr>
-                                    <th class="ps-4">Platform Name</th>
-                                    <th>Type</th>
-                                    <th>Connected Account / Channel</th>
-                                    <th class="pe-4 text-end">OAuth Token Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr th:each="p : ${platforms}">
-                                    <td class="ps-4 fw-bold text-dark" th:text="${p.platformName}">YouTube</td>
-                                    <td>
-                                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-3 py-1" th:text="${p.platformType}">YOUTUBE</span>
-                                    </td>
-                                    <td>
-                                        <span class="fw-semibold text-dark">
-                                            <i class="bi bi-patch-check-fill text-primary me-1"></i>
-                                            <span th:text="${p.connectedAccountName != null ? p.connectedAccountName : (p.accountIdentifier != null ? p.accountIdentifier : 'Connected Channel')}">@channel</span>
-                                        </span>
-                                    </td>
-                                    <td class="pe-4 text-end">
-                                        <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-1.5 rounded-pill">
-                                            <i class="bi bi-shield-check me-1"></i> Active
-                                        </span>
-                                    </td>
-                                </tr>
-                                <tr th:if="${#lists.isEmpty(platforms)}">
-                                    <td colspan="4" class="text-center text-muted py-4">
-                                        <i class="bi bi-plug fs-3 text-secondary d-block mb-1"></i>
-                                        No external publishing channels connected yet. Use the 1-Click buttons above to connect a channel.
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+                        <!-- Change Password Card -->
+                        <div class="col-md-7">
+                            <div class="card card-custom p-4">
+                                <div class="d-flex align-items-center gap-2 mb-3">
+                                    <div class="bg-warning-subtle text-warning p-2 rounded-3">
+                                        <i class="bi bi-key-fill fs-5"></i>
+                                    </div>
+                                    <div>
+                                        <h5 class="fw-bold mb-0">Change Password</h5>
+                                        <small class="text-muted">Update your account security password</small>
+                                    </div>
+                                </div>
 
-                <!-- Slack & Discord Webhooks Section -->
-                <div class="card card-custom overflow-hidden">
-                    <div class="p-4 border-bottom">
-                        <h5 class="fw-bold mb-3 text-dark"><i class="bi bi-bell-fill text-warning me-2"></i>Slack & Discord Notification Webhooks</h5>
-                        <form th:action="@{/platforms/webhooks/create}" method="post" th:object="${newWebhook}" class="row g-3 p-3 bg-light rounded-3 border">
-                            <div class="col-md-3">
-                                <label class="form-label fw-semibold text-dark small">Webhook Name *</label>
-                                <input type="text" name="name" class="form-control rounded-3" placeholder="e.g. #dev-release-alerts" required>
-                            </div>
-                            <div class="col-md-3">
-                                <label class="form-label fw-semibold text-dark small">Service *</label>
-                                <select name="platform" class="form-select rounded-3" required>
-                                    <option value="DISCORD" selected>Discord Webhook</option>
-                                    <option value="SLACK">Slack Incoming Webhook</option>
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label fw-semibold text-dark small">Webhook URL *</label>
-                                <input type="url" name="webhookUrl" class="form-control rounded-3" placeholder="https://discord.com/api/webhooks/..." required>
-                            </div>
-                            <div class="col-12 text-end">
-                                <button type="submit" class="btn btn-warning text-white rounded-pill px-4 fw-semibold"><i class="bi bi-bell me-1"></i> Save Webhook Channel</button>
-                            </div>
-                        </form>
-                    </div>
+                                <form th:action="@{/profile/password}" method="post">
+                                    <div class="mb-3">
+                                        <label for="oldPassword" class="form-label fw-semibold">Current Password *</label>
+                                        <input type="password" id="oldPassword" name="oldPassword" class="form-control" required placeholder="Enter current password">
+                                    </div>
 
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0">
-                            <thead class="table-light text-secondary text-uppercase small" style="font-size: 0.75rem; letter-spacing: 0.05em;">
-                                <tr>
-                                    <th class="ps-4">Channel Name</th>
-                                    <th>Service</th>
-                                    <th>Endpoint URL</th>
-                                    <th class="pe-4 text-end">Triggers</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr th:each="w : ${webhooks}">
-                                    <td class="ps-4 fw-bold text-dark" th:text="${w.name}">Channel</td>
-                                    <td>
-                                        <span class="badge rounded-pill px-3 py-1"
-                                              th:classappend="${w.platform == 'DISCORD' ? 'bg-primary-subtle text-primary border border-primary-subtle' : 'bg-danger-subtle text-danger border border-danger-subtle'}">
-                                            <i class="bi me-1" th:classappend="${w.platform == 'DISCORD' ? 'bi-discord' : 'bi-slack'}"></i>
-                                            <span th:text="${w.platform}">SERVICE</span>
-                                        </span>
-                                    </td>
-                                    <td class="small text-truncate text-muted" style="max-width: 300px;" th:text="${w.webhookUrl}">URL</td>
-                                    <td class="pe-4 text-end">
-                                        <span class="badge bg-secondary-subtle text-secondary rounded-pill px-3 py-1">PUBLISHED & FAILED</span>
-                                    </td>
-                                </tr>
-                                <tr th:if="${#lists.isEmpty(webhooks)}">
-                                    <td colspan="4" class="text-center text-muted py-4">No Slack/Discord webhooks configured yet.</td>
-                                </tr>
-                            </tbody>
-                        </table>
+                                    <div class="mb-3">
+                                        <label for="newPassword" class="form-label fw-semibold">New Password *</label>
+                                        <input type="password" id="newPassword" name="newPassword" class="form-control" required placeholder="At least 6 characters">
+                                    </div>
+
+                                    <div class="mb-4">
+                                        <label for="confirmPassword" class="form-label fw-semibold">Confirm New Password *</label>
+                                        <input type="password" id="confirmPassword" name="confirmPassword" class="form-control" required placeholder="Re-enter new password">
+                                    </div>
+
+                                    <button type="submit" class="btn btn-primary rounded-pill px-4 fw-semibold w-100">
+                                        <i class="bi bi-shield-check me-1"></i> Update Password
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </main>

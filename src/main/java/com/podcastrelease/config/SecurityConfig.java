@@ -55,7 +55,7 @@ public class SecurityConfig {
                 .frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin)
             )
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/login", "/signup", "/verify-otp", "/invites/*/accept", "/css/**", "/js/**", "/h2-console/**", "/api/auth/login", "/api/auth/register", "/api/invites/*/accept", "/api/jenkins/callback", "/api/episodes/*/jenkins-callback", "/feed.xml", "/rss", "/shows/*/feed.xml", "/platforms/oauth2/callback/**").permitAll()
+                .requestMatchers("/login", "/signup", "/verify-otp", "/invites/*/accept", "/invites/*/decline", "/css/**", "/js/**", "/h2-console/**", "/api/auth/login", "/api/auth/register", "/api/invites/*/accept", "/api/invites/*/decline", "/api/jenkins/callback", "/api/episodes/*/jenkins-callback", "/feed.xml", "/rss", "/shows/*/feed.xml", "/platforms/oauth2/callback/**").permitAll()
                 .requestMatchers("/admin/**").hasRole("ADMIN")
                 .requestMatchers("/api/teams/**").authenticated()
                 .anyRequest().authenticated()

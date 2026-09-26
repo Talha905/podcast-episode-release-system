@@ -51,6 +51,9 @@ class TeamControllerTest {
     private AuditLogRepository auditLogRepository;
 
     @Autowired
+    private NotificationRepository notificationRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     private User ownerUser;
@@ -60,6 +63,7 @@ class TeamControllerTest {
 
     @BeforeEach
     void setUp() {
+        notificationRepository.deleteAll();
         auditLogRepository.deleteAll();
         episodeRepository.deleteAll();
         podcastShowMemberRepository.deleteAll();
@@ -215,5 +219,90 @@ class TeamControllerTest {
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/login"))
                 .andExpect(flash().attribute("errorMessage", "Invitation has already been accepted."));
+    }
+
+    @Test
+    @WithMockUser(username = "teamowner")
+    void inviteMember_createsInAppNotificationIfUserExists() throws Exception {
+        mockMvc.perform(post("/teams/" + sampleTeam.getId() + "/invite").with(csrf())
+                        .param("email", "outsider@example.com")
+                        .param("role", "EDITOR"))
+                .andExpect(status().is3xxRedirection());
+
+        var notifs = notificationRepository.findByRecipientIdOrderByCreatedAtDesc(outsiderUser.getId());
+        org.junit.jupiter.api.Assertions.assertFalse(notifs.isEmpty());
+        org.junit.jupiter.api.Assertions.assertEquals("TEAM_INVITE", notifs.get(0).getType());
+    }
+
+    @Test
+    void declineInvite_invalidatesTokenAndRedirects() throws Exception {
+        com.podcastrelease.model.TeamInvite invite = new com.podcastrelease.model.TeamInvite(sampleTeam, "outsider@example.com", TeamRole.EDITOR, "declinetoken123", ownerUser);
+        teamInviteRepository.save(invite);
+
+        mockMvc.perform(post("/invites/declinetoken123/decline").with(csrf()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/dashboard"))
+                .andExpect(flash().attribute("successMessage", "Invitation declined."));
+
+        org.junit.jupiter.api.Assertions.assertTrue(teamInviteRepository.findByToken("declinetoken123").isEmpty());
+    }
+
+    @Test
+    void normalLogin_withoutPendingInvite_redirectsToDashboard() throws Exception {
+        mockMvc.perform(post("/login").with(csrf())
+                        .param("username", "teamowner")
+                        .param("password", "pass123"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/dashboard"));
+    }
+
+    @Test
+    void unauthenticatedAccessToProtectedPage_redirectsToLogin_thenPostLoginRedirectsBackToSavedPage() throws Exception {
+        MockHttpSession session = new MockHttpSession();
+
+        // 1. Visit protected page unauthenticated as HTML browser navigation
+        mockMvc.perform(get("/teams").header("Accept", "text/html").session(session))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("http://localhost/login"));
+
+        // 2. Perform login using same session
+        mockMvc.perform(post("/login").session(session).with(csrf())
+                        .param("username", "teamowner")
+                        .param("password", "pass123"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrlPattern("http://localhost/teams*"));
+    }
+
+    @Test
+    @WithMockUser(username = "teamowner")
+    void profilePage_rendersSuccessfully() throws Exception {
+        mockMvc.perform(get("/profile"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("profile"))
+                .andExpect(model().attributeExists("currentUser", "memberships"));
+    }
+
+    @Test
+    @WithMockUser(username = "teamowner")
+    void changePassword_success() throws Exception {
+        mockMvc.perform(post("/profile/password").with(csrf())
+                        .param("oldPassword", "pass123")
+                        .param("newPassword", "newpass123")
+                        .param("confirmPassword", "newpass123"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/profile"))
+                .andExpect(flash().attribute("successMessage", "Password updated successfully!"));
+    }
+
+    @Test
+    @WithMockUser(username = "teamowner")
+    void changePassword_wrongOldPassword_returnsError() throws Exception {
+        mockMvc.perform(post("/profile/password").with(csrf())
+                        .param("oldPassword", "wrongpass")
+                        .param("newPassword", "newpass123")
+                        .param("confirmPassword", "newpass123"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/profile"))
+                .andExpect(flash().attribute("errorMessage", "Current password is incorrect."));
     }
 }

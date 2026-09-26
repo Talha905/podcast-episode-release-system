@@ -63,6 +63,13 @@ public class EpisodeService {
             episode.setTeam(episode.getPodcastShow().getTeam());
         }
 
+        if (episode.getTeam() == null && user != null) {
+            List<TeamMembership> memberships = teamMembershipRepository.findByUserId(user.getId());
+            if (!memberships.isEmpty()) {
+                episode.setTeam(memberships.get(0).getTeam());
+            }
+        }
+
         if (episode.getAudioFileUrl() != null && episode.getFileSizeBytes() == null) {
             episode.setFileSizeBytes(352844L);
             episode.setDurationSeconds(240);
@@ -376,23 +383,57 @@ public class EpisodeService {
         List<Long> teamIds = getUserTeamIds(user);
         if (teamIds.isEmpty()) {
             summary.put("DRAFT", 0L);
-            summary.put("VALIDATED", 0L);
-            summary.put("PUBLISHED", 0L);
-            summary.put("FAILED", 0L);
+            summary.put("IN_REVIEW", 0L);
+            summary.put("SCHEDULED", 0L);
+            summary.put("PUBLISHED_THIS_MONTH", 0L);
+            summary.put("AVG_TIME_TO_PUBLISH", "N/A");
             summary.put("TOTAL", 0L);
             return summary;
         }
 
         long draftCount = episodeRepository.countByTeamIdInAndStatus(teamIds, EpisodeStatus.DRAFT);
-        long validatedCount = episodeRepository.countByTeamIdInAndStatus(teamIds, EpisodeStatus.VALIDATED) + episodeRepository.countByTeamIdInAndStatus(teamIds, EpisodeStatus.APPROVED);
-        long publishedCount = episodeRepository.countByTeamIdInAndStatus(teamIds, EpisodeStatus.PUBLISHED);
-        long failedCount = episodeRepository.countByTeamIdInAndStatus(teamIds, EpisodeStatus.FAILED);
+        long inReviewCount = episodeRepository.countByTeamIdInAndStatus(teamIds, EpisodeStatus.SUBMITTED_FOR_REVIEW) +
+                             episodeRepository.countByTeamIdInAndStatus(teamIds, EpisodeStatus.IN_EDITING) +
+                             episodeRepository.countByTeamIdInAndStatus(teamIds, EpisodeStatus.PENDING_EDIT) +
+                             episodeRepository.countByTeamIdInAndStatus(teamIds, EpisodeStatus.NEEDS_REVISION);
+
+        long scheduledCount = episodeRepository.countByTeamIdInAndStatus(teamIds, EpisodeStatus.SCHEDULED) +
+                              episodeRepository.countByTeamIdInAndStatus(teamIds, EpisodeStatus.APPROVED);
+
+        List<Episode> teamEpisodes = episodeRepository.findByTeamIdIn(teamIds);
+        LocalDateTime firstOfMonth = LocalDateTime.now().withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0);
+
+        long publishedThisMonth = teamEpisodes.stream()
+                .filter(e -> e.getStatus() == EpisodeStatus.PUBLISHED)
+                .filter(e -> e.getUpdatedAt() != null && e.getUpdatedAt().isAfter(firstOfMonth))
+                .count();
+
+        List<Episode> publishedEpisodes = teamEpisodes.stream()
+                .filter(e -> e.getStatus() == EpisodeStatus.PUBLISHED && e.getCreatedAt() != null && e.getUpdatedAt() != null)
+                .collect(Collectors.toList());
+
+        String avgTimeToPublish = "N/A";
+        if (!publishedEpisodes.isEmpty()) {
+            long totalMinutes = publishedEpisodes.stream()
+                    .mapToLong(e -> java.time.Duration.between(e.getCreatedAt(), e.getUpdatedAt()).toMinutes())
+                    .sum();
+            long avgMinutes = Math.max(1, totalMinutes / publishedEpisodes.size());
+            if (avgMinutes < 60) {
+                avgTimeToPublish = avgMinutes + "m";
+            } else if (avgMinutes < 1440) {
+                avgTimeToPublish = (avgMinutes / 60) + "h " + (avgMinutes % 60) + "m";
+            } else {
+                avgTimeToPublish = (avgMinutes / 1440) + "d " + ((avgMinutes % 1440) / 60) + "h";
+            }
+        }
+
         long total = episodeRepository.countByTeamIdIn(teamIds);
 
         summary.put("DRAFT", draftCount);
-        summary.put("VALIDATED", validatedCount);
-        summary.put("PUBLISHED", publishedCount);
-        summary.put("FAILED", failedCount);
+        summary.put("IN_REVIEW", inReviewCount);
+        summary.put("SCHEDULED", scheduledCount);
+        summary.put("PUBLISHED_THIS_MONTH", publishedThisMonth);
+        summary.put("AVG_TIME_TO_PUBLISH", avgTimeToPublish);
         summary.put("TOTAL", total);
         return summary;
     }

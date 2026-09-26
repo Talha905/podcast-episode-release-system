@@ -8,181 +8,332 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        body {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            background-color: #f1f5f9;
-            color: #334155;
-        }
-        .navbar-custom {
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-        }
-        .card-custom {
-            border: none;
-            border-radius: 16px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-            background: #ffffff;
-        }
-        .table-custom thead {
-            background-color: #f8fafc;
-            color: #475569;
-            font-weight: 700;
-            text-transform: uppercase;
-            font-size: 0.75rem;
-            letter-spacing: 0.05em;
-        }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; color: #334155; }
+        .sidebar { background-color: #ffffff; min-height: 100vh; }
+        .sidebar .nav-link { color: #64748b; font-weight: 600; border-radius: 10px; padding: 0.6rem 1rem; margin-bottom: 0.2rem; }
+        .sidebar .nav-link:hover, .sidebar .nav-link.active { color: #2563eb; background-color: #eff6ff; }
+        .topbar { background-color: #ffffff; border-bottom: 1px solid #e2e8f0; height: 70px; }
+        .card-custom { border: none; border-radius: 14px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); background: #ffffff; }
+        .avatar-circle { width: 36px; height: 36px; background-color: #3b82f6; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem; }
     </style>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark navbar-custom mb-4 py-3">
-        <div class="container">
-            <a class="navbar-brand fw-bold d-flex align-items-center gap-2" th:href="@{/}">
-                <span class="fs-4"><i class="bi bi-mic-fill text-primary"></i></span>
-                <span>Podcast Release System</span>
-            </a>
-            <div class="d-flex align-items-center text-white gap-2">
-                <a th:href="@{/teams}" class="btn btn-outline-light btn-sm rounded-pill px-3">
-                    <i class="bi bi-people me-1"></i> Teams
-                </a>
-                <a th:href="@{/episodes}" class="btn btn-outline-light btn-sm rounded-pill px-3">
-                    <i class="bi bi-collection-play me-1"></i> Dashboard
-                </a>
-                <a th:href="@{/shows}" class="btn btn-outline-light btn-sm rounded-pill px-3">
-                    <i class="bi bi-broadcast-pin me-1"></i> Shows
-                </a>
-                <a th:href="@{/platforms}" class="btn btn-outline-light btn-sm rounded-pill px-3">
-                    <i class="bi bi-share me-1"></i> Integrations
-                </a>
+    <div class="d-flex min-vh-100">
+        <!-- Left Sidebar -->
+        <aside class="sidebar p-3 border-end bg-white d-flex flex-column" style="width: 260px;">
+            <!-- Brand -->
+            <div class="d-flex align-items-center gap-2 px-2 py-3 mb-2 border-bottom">
+                <span class="fs-4 text-primary"><i class="bi bi-mic-fill"></i></span>
+                <span class="fw-bold text-dark fs-5">Podcast System</span>
             </div>
-        </div>
-    </nav>
 
-    <div class="container pb-5">
-        <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show rounded-3 mb-4 shadow-sm" role="alert">
-            <i class="bi bi-check-circle-fill me-2"></i><span th:text="${successMessage}"></span>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-        <div th:if="${errorMessage}" class="alert alert-danger alert-dismissible fade show rounded-3 mb-4 shadow-sm" role="alert">
-            <i class="bi bi-exclamation-triangle-fill me-2"></i><span th:text="${errorMessage}"></span>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
+            <!-- Team Switcher -->
+            <div class="dropdown mb-4 px-2" th:if="${currentUser}">
+                <button class="btn btn-light w-100 text-start d-flex justify-content-between align-items-center border rounded-3 p-2.5" type="button" data-bs-toggle="dropdown">
+                    <div class="text-truncate">
+                        <small class="text-muted d-block text-uppercase fw-bold" style="font-size: 0.65rem;">Active Team</small>
+                        <strong class="text-dark small" th:text="${activeTeam != null ? activeTeam.name : 'No Team'}">Select Team</strong>
+                    </div>
+                    <i class="bi bi-chevron-down text-muted small ms-1"></i>
+                </button>
+                <ul class="dropdown-menu shadow-sm w-100 p-1">
+                    <li th:each="t : ${myTeams}">
+                        <a class="dropdown-item rounded-2 py-2" th:href="@{/dashboard(teamId=${t.id})}" th:text="${t.name}">Team</a>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item text-primary" th:href="@{/teams}"><i class="bi bi-plus-circle me-1"></i> Manage / Join Teams</a></li>
+                </ul>
+            </div>
 
-        <div class="card card-custom mb-4">
-            <div class="card-body p-4">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h4 class="fw-bold mb-1"><i class="bi bi-people-fill me-2 text-primary"></i>User & Team Management</h4>
-                        <p class="text-muted small mb-0">Manage system users, role privileges, account statuses, and Podcast Show team assignments</p>
+            <!-- Role-Scoped Nav Links -->
+            <ul class="nav nav-pills flex-column mb-auto">
+                <li class="nav-item">
+                    <a th:href="@{/dashboard}" class="nav-link">
+                        <i class="bi bi-grid-1x2-fill me-2"></i> Dashboard
+                    </a>
+                </li>
+                <li th:if="${myRoleInActiveTeam == T(com.podcastrelease.model.TeamRole).CREATOR or myRoleInActiveTeam == T(com.podcastrelease.model.TeamRole).OWNER}">
+                    <a th:href="@{/episodes/new}" class="nav-link">
+                        <i class="bi bi-plus-square me-2"></i> My Episodes
+                    </a>
+                </li>
+                <li th:if="${myRoleInActiveTeam == T(com.podcastrelease.model.TeamRole).EDITOR or myRoleInActiveTeam == T(com.podcastrelease.model.TeamRole).OWNER}">
+                    <a th:href="@{/dashboard(status='SUBMITTED_FOR_REVIEW')}" class="nav-link">
+                        <i class="bi bi-pencil-square me-2"></i> Review Queue
+                    </a>
+                </li>
+                <li th:if="${myRoleInActiveTeam == T(com.podcastrelease.model.TeamRole).RELEASE_MANAGER or myRoleInActiveTeam == T(com.podcastrelease.model.TeamRole).OWNER}">
+                    <a th:href="@{/dashboard(status='APPROVED')}" class="nav-link">
+                        <i class="bi bi-send-check me-2"></i> Release Queue
+                    </a>
+                </li>
+                <li>
+                    <a th:href="@{/shows}" class="nav-link">
+                        <i class="bi bi-broadcast me-2"></i> Shows & Channels
+                    </a>
+                </li>
+                <li>
+                    <a th:href="@{/teams}" class="nav-link">
+                        <i class="bi bi-people me-2"></i> Team & Members
+                    </a>
+                </li>
+                <li>
+                    <a th:href="@{/platforms}" class="nav-link">
+                        <i class="bi bi-share me-2"></i> Integrations
+                    </a>
+                </li>
+                <li th:if="${currentUser != null and currentUser.platformRole == T(com.podcastrelease.model.PlatformRole).ADMIN}">
+                    <hr class="dropdown-divider my-2">
+                    <a th:href="@{/admin/users}" class="nav-link text-danger active">
+                        <i class="bi bi-shield-lock me-2"></i> Admin Panel
+                    </a>
+                </li>
+            </ul>
+        </aside>
+
+        <!-- Main Content Wrapper -->
+        <div class="flex-grow-1 d-flex flex-column min-vh-100">
+            <!-- Top Bar -->
+            <header class="topbar px-4 d-flex align-items-center justify-content-between">
+                <form th:action="@{/dashboard}" method="get" class="d-flex align-items-center position-relative" style="width: 320px;">
+                    <i class="bi bi-search position-absolute ms-3 text-muted"></i>
+                    <input type="text" name="title" class="form-control rounded-pill ps-5 bg-light border-0" placeholder="Search team episodes...">
+                </form>
+
+                <div class="d-flex align-items-center gap-3">
+                    <!-- Notification Bell Widget -->
+                    <div class="dropdown">
+                        <button class="btn btn-light rounded-circle position-relative p-2" type="button" id="notifBell" data-bs-toggle="dropdown" onclick="fetchNotifications()">
+                            <i class="bi bi-bell fs-5 text-secondary"></i>
+                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="notifBadge" style="display: none;">0</span>
+                        </button>
+                        <div class="dropdown-menu dropdown-menu-end shadow-lg border-0 p-0" style="width: 340px; border-radius: 14px; overflow: hidden;">
+                            <div class="p-3 bg-light border-bottom d-flex justify-content-between align-items-center">
+                                <h6 class="fw-bold mb-0">Notifications</h6>
+                                <small class="text-muted" id="notifCountText">0 unread</small>
+                            </div>
+                            <div class="list-group list-group-flush" id="notifList" style="max-height: 320px; overflow-y: auto;">
+                                <div class="p-3 text-center text-muted small">No notifications yet</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- User Menu Dropdown -->
+                    <div class="dropdown" th:if="${currentUser}">
+                        <button class="btn p-0 d-flex align-items-center gap-2 border-0 bg-transparent" type="button" data-bs-toggle="dropdown">
+                            <div class="avatar-circle" th:text="${#strings.substring(currentUser.username, 0, 1).toUpperCase()}">U</div>
+                            <div class="d-none d-md-block text-start">
+                                <div class="fw-bold small mb-0" th:text="${currentUser.username}">user</div>
+                                <span class="badge bg-secondary-subtle text-secondary" style="font-size: 0.65rem;" th:text="${myRoleInActiveTeam != null ? myRoleInActiveTeam : 'MEMBER'}">ROLE</span>
+                            </div>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow border-0 mt-2 p-1" style="border-radius: 10px;">
+                            <li><a class="dropdown-item rounded-2 py-2" th:href="@{/profile}"><i class="bi bi-person me-2"></i> My Profile</a></li>
+                            <li><hr class="dropdown-divider my-1"></li>
+                            <li>
+                                <form th:action="@{/logout}" method="post" class="m-0">
+                                    <button type="submit" class="dropdown-item rounded-2 py-2 text-danger"><i class="bi bi-box-arrow-right me-2"></i> Logout</button>
+                                </form>
+                            </li>
+                        </ul>
                     </div>
                 </div>
-            </div>
-        </div>
+            </header>
 
-        <div class="card card-custom">
-            <div class="card-body p-0">
-                <table class="table table-hover align-middle mb-0 table-custom">
-                    <thead>
-                        <tr>
-                            <th class="ps-4">ID</th>
-                            <th>User Details</th>
-                            <th>Current Role</th>
-                            <th>Account Status</th>
-                            <th>Show Team Assignments</th>
-                            <th class="pe-4 text-end">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr th:each="user : ${users}">
-                            <td class="ps-4 fw-bold text-muted" th:text="${user.id}">1</td>
-                            <td>
-                                <div class="fw-bold text-dark fs-6" th:text="${user.username}">username</div>
-                                <div class="text-muted small" th:text="${user.email != null ? user.email : 'No email provided'}">email@example.com</div>
-                            </td>
-                            <td>
-                                <span class="badge rounded-pill px-3 py-1.5"
-                                      th:classappend="${user.platformRole != null && user.platformRole.name() == 'ADMIN' ? 'bg-danger-subtle text-danger border border-danger-subtle' : 'bg-primary-subtle text-primary border border-primary-subtle'}">
-                                    <i class="bi me-1" th:classappend="${user.platformRole != null && user.platformRole.name() == 'ADMIN' ? 'bi-shield-lock' : 'bi-person'}"></i>
-                                    <span th:text="${user.platformRole != null ? user.platformRole : 'STANDARD'}">ROLE</span>
-                                </span>
-                            </td>
-                            <td>
-                                <span th:if="${user.enabled}" class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1.5">
-                                    <i class="bi bi-check-circle-fill me-1"></i> Active
-                                </span>
-                                <span th:if="${!user.enabled}" class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-3 py-1.5">
-                                    <i class="bi bi-clock-history me-1"></i> Disabled / Pending
-                                </span>
-                            </td>
-                            <td>
-                                <div class="d-flex flex-wrap gap-1">
-                                    <span th:each="m : ${members}" th:if="${m.user.id == user.id}" class="badge bg-light text-dark border rounded-pill small">
-                                        <i class="bi bi-broadcast me-1 text-primary"></i><span th:text="${m.podcastShow.name}">Show</span> (<span th:text="${m.roleInShow}">ROLE</span>)
-                                    </span>
-                                </div>
-                            </td>
-                            <td class="pe-4 text-end">
-                                <div class="d-flex gap-1 justify-content-end">
-                                    <!-- Role Change Modal Trigger / Form -->
-                                    <form th:action="@{/admin/users/{id}/role(id=${user.id})}" method="post" class="d-inline">
-                                        <select name="platformRole" class="form-select form-select-sm d-inline-block w-auto" onchange="this.form.submit()">
-                                            <option value="" th:selected="${user.platformRole == null}">STANDARD</option>
-                                            <option th:each="r : ${roles}" th:value="${r}" th:text="${r}" th:selected="${r == user.platformRole}"></option>
-                                        </select>
-                                    </form>
+            <main class="p-4 flex-grow-1">
+                <!-- Alerts -->
+                <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show rounded-3 mb-4 shadow-sm border-0" role="alert">
+                    <i class="bi bi-check-circle-fill me-2"></i><span th:text="${successMessage}"></span>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                <div th:if="${errorMessage}" class="alert alert-danger alert-dismissible fade show rounded-3 mb-4 shadow-sm border-0" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i><span th:text="${errorMessage}"></span>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
 
-                                    <!-- Status Toggle Button -->
-                                    <form th:action="@{/admin/users/{id}/toggle-status(id=${user.id})}" method="post" class="d-inline">
-                                        <button type="submit" class="btn btn-sm rounded-pill px-3" th:classappend="${user.enabled ? 'btn-outline-danger' : 'btn-outline-success'}">
-                                            <i class="bi me-1" th:classappend="${user.enabled ? 'bi-person-x' : 'bi-person-check'}"></i>
-                                            <span th:text="${user.enabled ? 'Disable' : 'Enable'}">Action</span>
-                                        </button>
-                                    </form>
+                <!-- Page Header Card -->
+                <div class="card card-custom p-4 mb-4">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="bg-danger-subtle text-danger p-3 rounded-circle">
+                            <i class="bi bi-shield-lock-fill fs-3"></i>
+                        </div>
+                        <div>
+                            <h4 class="fw-bold mb-1">User Management & Role Administration</h4>
+                            <p class="text-muted small mb-0">Manage system users, global role privileges, account active states, and show assignments.</p>
+                        </div>
+                    </div>
+                </div>
 
-                                    <!-- Assign Show Modal Button -->
-                                    <button class="btn btn-sm btn-outline-primary rounded-pill px-3" data-bs-toggle="modal" th:data-bs-target="${'#assignModal' + user.id}">
-                                        <i class="bi bi-plus-circle me-1"></i>Assign Show
-                                    </button>
-                                </div>
-
-                                <!-- Assign Show Modal -->
-                                <div class="modal fade text-start" th:id="${'assignModal' + user.id}" tabindex="-1">
-                                    <div class="modal-dialog">
-                                        <div class="modal-content">
-                                            <div class="modal-header">
-                                                <h5 class="modal-title fw-bold">Assign User to Podcast Show</h5>
-                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <!-- Users Table Card -->
+                <div class="card card-custom overflow-hidden">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light text-secondary text-uppercase small" style="font-size: 0.75rem; letter-spacing: 0.05em;">
+                                <tr>
+                                    <th class="ps-4">ID</th>
+                                    <th>User Details</th>
+                                    <th>Current Role</th>
+                                    <th>Account Status</th>
+                                    <th>Show Team Assignments</th>
+                                    <th class="pe-4 text-end">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="user : ${users}">
+                                    <td class="ps-4 fw-bold text-muted" th:text="${user.id}">1</td>
+                                    <td>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <div class="avatar-circle bg-primary text-white fw-bold" th:text="${#strings.substring(user.username, 0, 1).toUpperCase()}">U</div>
+                                            <div>
+                                                <div class="fw-bold text-dark fs-6" th:text="${user.username}">username</div>
+                                                <div class="text-muted small" th:text="${user.email != null ? user.email : 'No email provided'}">email@example.com</div>
                                             </div>
-                                            <form th:action="@{/admin/users/{id}/assign-show(id=${user.id})}" method="post">
-                                                <div class="modal-body">
-                                                    <p class="small text-muted">Assign <strong th:text="${user.username}">user</strong> to a show team:</p>
-                                                    <div class="mb-3">
-                                                        <label class="form-label fw-semibold">Select Show *</label>
-                                                        <select name="showId" class="form-select" required>
-                                                            <option th:each="s : ${shows}" th:value="${s.id}" th:text="${s.name}"></option>
-                                                        </select>
-                                                    </div>
-                                                    <div class="mb-3">
-                                                        <label class="form-label fw-semibold">Role in Show *</label>
-                                                        <select name="roleInShow" class="form-select" required>
-                                                            <option value="PRODUCER">PRODUCER</option>
-                                                            <option value="HOST">HOST</option>
-                                                        </select>
-                                                    </div>
-                                                </div>
-                                                <div class="modal-footer">
-                                                    <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Cancel</button>
-                                                    <button type="submit" class="btn btn-primary rounded-pill px-4">Assign Member</button>
-                                                </div>
-                                            </form>
                                         </div>
-                                    </div>
-                                </div>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge rounded-pill px-3 py-1.5"
+                                              th:classappend="${user.platformRole != null && user.platformRole.name() == 'ADMIN' ? 'bg-danger-subtle text-danger border border-danger-subtle' : 'bg-secondary-subtle text-secondary border border-secondary-subtle'}">
+                                            <i class="bi me-1" th:classappend="${user.platformRole != null && user.platformRole.name() == 'ADMIN' ? 'bi-shield-lock-fill' : 'bi-person-fill'}"></i>
+                                            <span th:text="${user.platformRole != null ? user.platformRole : 'STANDARD'}">ROLE</span>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span th:if="${user.enabled}" class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1.5">
+                                            <i class="bi bi-check-circle-fill me-1"></i> Active
+                                        </span>
+                                        <span th:if="${!user.enabled}" class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-3 py-1.5">
+                                            <i class="bi bi-x-circle-fill me-1"></i> Disabled
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex flex-wrap gap-1">
+                                            <span th:each="m : ${members}" th:if="${m.user.id == user.id}" class="badge bg-secondary-subtle text-secondary rounded-pill px-2.5 py-1 small">
+                                                <i class="bi bi-broadcast me-1 text-primary"></i><span th:text="${m.podcastShow.name}">Show</span> (<span th:text="${m.roleInShow}">ROLE</span>)
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td class="pe-4 text-end">
+                                        <div class="d-flex gap-2 justify-content-end align-items-center">
+                                            <!-- Role Change Form -->
+                                            <form th:action="@{/admin/users/{id}/role(id=${user.id})}" method="post" class="d-inline">
+                                                <select name="platformRole" class="form-select form-select-sm rounded-pill border-secondary-subtle pe-4" style="width: 130px;" onchange="this.form.submit()">
+                                                    <option value="" th:selected="${user.platformRole == null}">STANDARD</option>
+                                                    <option th:each="r : ${roles}" th:value="${r}" th:text="${r}" th:selected="${r == user.platformRole}"></option>
+                                                </select>
+                                            </form>
+
+                                            <!-- Status Toggle Button -->
+                                            <form th:action="@{/admin/users/{id}/toggle-status(id=${user.id})}" method="post" class="d-inline">
+                                                <button type="submit" class="btn btn-sm rounded-pill px-3" th:classappend="${user.enabled ? 'btn-outline-danger' : 'btn-outline-success'}">
+                                                    <i class="bi me-1" th:classappend="${user.enabled ? 'bi-person-x' : 'bi-person-check'}"></i>
+                                                    <span th:text="${user.enabled ? 'Disable' : 'Enable'}">Action</span>
+                                                </button>
+                                            </form>
+
+                                            <!-- Assign Show Modal Button -->
+                                            <button class="btn btn-sm btn-outline-primary rounded-pill px-3" data-bs-toggle="modal" th:data-bs-target="${'#assignModal' + user.id}">
+                                                <i class="bi bi-plus-circle me-1"></i>Assign Show
+                                            </button>
+                                        </div>
+
+                                        <!-- Assign Show Modal -->
+                                        <div class="modal fade text-start" th:id="${'assignModal' + user.id}" tabindex="-1">
+                                            <div class="modal-dialog modal-dialog-centered">
+                                                <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
+                                                    <div class="modal-header border-bottom">
+                                                        <h5 class="modal-title fw-bold text-dark"><i class="bi bi-person-plus text-primary me-2"></i>Assign User to Show</h5>
+                                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                                    </div>
+                                                    <form th:action="@{/admin/users/{id}/assign-show(id=${user.id})}" method="post">
+                                                        <div class="modal-body p-4">
+                                                            <p class="small text-muted mb-3">Assign <strong class="text-dark" th:text="${user.username}">user</strong> to a podcast show team:</p>
+                                                            <div class="mb-3">
+                                                                <label class="form-label fw-semibold text-dark small">Select Show *</label>
+                                                                <select name="showId" class="form-select rounded-3" required>
+                                                                    <option th:each="s : ${shows}" th:value="${s.id}" th:text="${s.name}"></option>
+                                                                </select>
+                                                            </div>
+                                                            <div class="mb-3">
+                                                                <label class="form-label fw-semibold text-dark small">Role in Show *</label>
+                                                                <select name="roleInShow" class="form-select rounded-3" required>
+                                                                    <option value="PRODUCER">PRODUCER</option>
+                                                                    <option value="HOST">HOST</option>
+                                                                </select>
+                                                            </div>
+                                                        </div>
+                                                        <div class="modal-footer border-top p-3">
+                                                            <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+                                                            <button type="submit" class="btn btn-primary rounded-pill px-4 fw-semibold">Assign Member</button>
+                                                        </div>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </main>
         </div>
     </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function fetchNotifications() {
+            fetch('/api/notifications')
+                .then(res => res.json())
+                .then(data => {
+                    const badge = document.getElementById('notifBadge');
+                    const text = document.getElementById('notifCountText');
+                    const list = document.getElementById('notifList');
+
+                    if (data.unreadCount > 0) {
+                        badge.innerText = data.unreadCount;
+                        badge.style.display = 'inline-block';
+                        text.innerText = data.unreadCount + ' unread';
+                    } else {
+                        badge.style.display = 'none';
+                        text.innerText = '0 unread';
+                    }
+
+                    if (data.notifications && data.notifications.length > 0) {
+                        list.innerHTML = data.notifications.map(n => {
+                            let actionButtons = '';
+                            if (n.type === 'TEAM_INVITE' && n.targetUrl) {
+                                const token = n.targetUrl.split('/')[2];
+                                actionButtons = `
+                                    <div class="mt-2 d-flex gap-2">
+                                        <a href="${n.targetUrl}" onclick="markNotifRead(${n.id})" class="btn btn-sm btn-primary py-0 px-2 small">Accept</a>
+                                        <form action="/invites/${token}/decline" method="post" class="d-inline mb-0" onclick="event.stopPropagation();">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-2 small">Decline</button>
+                                        </form>
+                                    </div>
+                                `;
+                            }
+                            return `
+                                <div class="list-group-item list-group-item-action p-3 ${!n.isRead ? 'bg-light font-weight-bold' : ''}">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <strong class="small">${n.title}</strong>
+                                        <small class="text-muted" style="font-size: 0.65rem;">${n.createdAt.substring(0, 10)}</small>
+                                    </div>
+                                    <div class="small text-muted mt-1">${n.message}</div>
+                                    ${actionButtons}
+                                </div>
+                            `;
+                        }).join('');
+                    } else {
+                        list.innerHTML = '<div class="p-3 text-center text-muted small">No notifications yet</div>';
+                    }
+                });
+        }
+
+        function markNotifRead(id) {
+            fetch('/api/notifications/' + id + '/read', { method: 'POST' });
+        }
+
+        document.addEventListener('DOMContentLoaded', fetchNotifications);
+    </script>
 </body>
 </html>
