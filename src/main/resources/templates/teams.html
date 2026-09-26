@@ -3,19 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Teams & Collaboration - Podcast Episode Release System</title>
+    <title>Teams & Collaboration - Podcast Release System</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f1f5f9; color: #334155; }
-        .navbar-custom { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; color: #334155; }
+        .sidebar { background-color: #ffffff; min-height: 100vh; }
+        .sidebar .nav-link { color: #64748b; font-weight: 600; border-radius: 10px; padding: 0.6rem 1rem; margin-bottom: 0.2rem; }
+        .sidebar .nav-link:hover, .sidebar .nav-link.active { color: #2563eb; background-color: #eff6ff; }
+        .topbar { background-color: #ffffff; border-bottom: 1px solid #e2e8f0; height: 70px; }
         .card-custom { border: none; border-radius: 14px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); background: #ffffff; }
-        .btn-primary-custom { background-color: #2563eb; color: #ffffff; border: none; font-weight: 600; border-radius: 8px; }
-        .btn-primary-custom:hover { background-color: #1d4ed8; color: #ffffff; }
-        .team-pill { border-radius: 10px; transition: all 0.2s; cursor: pointer; text-decoration: none; color: inherit; }
-        .team-pill.active { background-color: #e0e7ff; border-color: #6366f1 !important; color: #4338ca; font-weight: 700; }
-        .team-pill:hover:not(.active) { background-color: #f8fafc; }
         .role-chip { font-size: 0.75rem; font-weight: 700; padding: 0.3em 0.7em; border-radius: 50rem; display: inline-flex; align-items: center; gap: 0.25rem; }
         .role-chip-owner { background-color: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
         .role-chip-manager { background-color: #e0e7ff; color: #3730a3; border: 1px solid #c7d2fe; }
@@ -25,165 +23,221 @@
     </style>
 </head>
 <body>
-    <!-- Navigation Bar -->
-    <nav class="navbar navbar-expand-lg navbar-dark navbar-custom mb-4 py-3">
-        <div class="container">
-            <a class="navbar-brand fw-bold d-flex align-items-center gap-2" th:href="@{/}">
-                <span class="fs-4"><i class="bi bi-mic-fill text-primary"></i></span>
-                <span>Podcast Release System</span>
-            </a>
-            <div class="d-flex align-items-center text-white gap-2">
-                <a th:href="@{/dashboard}" class="btn btn-outline-light btn-sm rounded-pill px-3 me-1">
-                    <i class="bi bi-speedometer2 me-1"></i> Dashboard
-                </a>
-                <a th:href="@{/teams}" class="btn btn-primary btn-sm rounded-pill px-3 me-1">
-                    <i class="bi bi-people-fill me-1"></i> Teams
-                </a>
-                <a th:href="@{/shows}" class="btn btn-outline-light btn-sm rounded-pill px-3 me-1">
-                    <i class="bi bi-broadcast-pin me-1"></i> Shows
-                </a>
-                <a th:href="@{/platforms}" class="btn btn-outline-light btn-sm rounded-pill px-3 me-1">
-                    <i class="bi bi-share me-1"></i> Integrations
-                </a>
-                <a th:href="@{/admin/users}" class="btn btn-danger btn-sm rounded-pill px-3 me-2" sec:authorize="hasRole('ADMIN')">
-                    <i class="bi bi-people-fill me-1"></i> User Management
-                </a>
+    <div class="d-flex min-vh-100">
+        <!-- Left Sidebar -->
+        <aside class="sidebar p-3 border-end bg-white d-flex flex-column" style="width: 260px;">
+            <!-- Brand -->
+            <div class="d-flex align-items-center gap-2 px-2 py-3 mb-2 border-bottom">
+                <span class="fs-4 text-primary"><i class="bi bi-mic-fill"></i></span>
+                <span class="fw-bold text-dark fs-5">Podcast System</span>
+            </div>
 
-                <!-- Notification Bell Dropdown -->
-                <div class="dropdown me-2">
-                    <button class="btn btn-outline-light btn-sm rounded-circle position-relative p-2" type="button" id="notifBell" data-bs-toggle="dropdown" onclick="fetchNotifications()">
-                        <i class="bi bi-bell"></i>
-                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="notifBadge" style="display: none;">0</span>
-                    </button>
-                    <div class="dropdown-menu dropdown-menu-end shadow-lg border-0 p-0 text-dark" style="width: 340px; border-radius: 14px; overflow: hidden;">
-                        <div class="p-3 bg-light border-bottom d-flex justify-content-between align-items-center">
-                            <h6 class="fw-bold mb-0">Notifications</h6>
-                            <small class="text-muted" id="notifCountText">0 unread</small>
-                        </div>
-                        <div class="list-group list-group-flush" id="notifList" style="max-height: 320px; overflow-y: auto;">
-                            <div class="p-3 text-center text-muted small">No notifications yet</div>
+            <!-- Team Switcher -->
+            <div class="dropdown mb-4 px-2" th:if="${currentUser}">
+                <button class="btn btn-light w-100 text-start d-flex justify-content-between align-items-center border rounded-3 p-2.5" type="button" data-bs-toggle="dropdown">
+                    <div class="text-truncate">
+                        <small class="text-muted d-block text-uppercase fw-bold" style="font-size: 0.65rem;">Active Team</small>
+                        <strong class="text-dark small" th:text="${activeTeam != null ? activeTeam.name : 'No Team'}">Select Team</strong>
+                    </div>
+                    <i class="bi bi-chevron-down text-muted small ms-1"></i>
+                </button>
+                <ul class="dropdown-menu shadow-sm w-100 p-1">
+                    <li th:each="t : ${myTeams}">
+                        <a class="dropdown-item rounded-2 py-2" th:href="@{/teams(teamId=${t.id})}" th:text="${t.name}">Team</a>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item text-primary" th:href="@{/teams}"><i class="bi bi-plus-circle me-1"></i> Manage / Join Teams</a></li>
+                </ul>
+            </div>
+
+            <!-- Role-Scoped Nav Links -->
+            <ul class="nav nav-pills flex-column mb-auto">
+                <li class="nav-item">
+                    <a th:href="@{/dashboard}" class="nav-link">
+                        <i class="bi bi-grid-1x2-fill me-2"></i> Dashboard
+                    </a>
+                </li>
+                <li th:if="${activeTeam != null and (myRoles[activeTeam.id] == T(com.podcastrelease.model.TeamRole).CREATOR or myRoles[activeTeam.id] == T(com.podcastrelease.model.TeamRole).OWNER)}">
+                    <a th:href="@{/episodes/new}" class="nav-link">
+                        <i class="bi bi-plus-square me-2"></i> My Episodes
+                    </a>
+                </li>
+                <li th:if="${activeTeam != null and (myRoles[activeTeam.id] == T(com.podcastrelease.model.TeamRole).EDITOR or myRoles[activeTeam.id] == T(com.podcastrelease.model.TeamRole).OWNER)}">
+                    <a th:href="@{/dashboard(status='SUBMITTED_FOR_REVIEW')}" class="nav-link">
+                        <i class="bi bi-pencil-square me-2"></i> Review Queue
+                    </a>
+                </li>
+                <li th:if="${activeTeam != null and (myRoles[activeTeam.id] == T(com.podcastrelease.model.TeamRole).RELEASE_MANAGER or myRoles[activeTeam.id] == T(com.podcastrelease.model.TeamRole).OWNER)}">
+                    <a th:href="@{/dashboard(status='APPROVED')}" class="nav-link">
+                        <i class="bi bi-send-check me-2"></i> Release Queue
+                    </a>
+                </li>
+                <li>
+                    <a th:href="@{/shows}" class="nav-link">
+                        <i class="bi bi-broadcast me-2"></i> Shows & Channels
+                    </a>
+                </li>
+                <li>
+                    <a th:href="@{/teams}" class="nav-link active">
+                        <i class="bi bi-people me-2"></i> Team & Members
+                    </a>
+                </li>
+                <li>
+                    <a th:href="@{/platforms}" class="nav-link">
+                        <i class="bi bi-share me-2"></i> Integrations
+                    </a>
+                </li>
+                <li th:if="${currentUser != null and currentUser.platformRole == T(com.podcastrelease.model.PlatformRole).ADMIN}">
+                    <hr class="dropdown-divider my-2">
+                    <a th:href="@{/admin/users}" class="nav-link text-danger">
+                        <i class="bi bi-shield-lock me-2"></i> Admin Panel
+                    </a>
+                </li>
+            </ul>
+        </aside>
+
+        <!-- Main Content Wrapper -->
+        <div class="flex-grow-1 d-flex flex-column min-vh-100">
+            <!-- Top Bar -->
+            <header class="topbar px-4 d-flex align-items-center justify-content-between">
+                <form th:action="@{/dashboard}" method="get" class="d-flex align-items-center position-relative" style="width: 320px;">
+                    <i class="bi bi-search position-absolute ms-3 text-muted"></i>
+                    <input type="text" name="title" class="form-control rounded-pill ps-5 bg-light border-0" placeholder="Search team episodes...">
+                </form>
+
+                <div class="d-flex align-items-center gap-3">
+                    <!-- Notification Bell Widget -->
+                    <div class="dropdown">
+                        <button class="btn btn-light rounded-circle position-relative p-2" type="button" id="notifBell" data-bs-toggle="dropdown" onclick="fetchNotifications()">
+                            <i class="bi bi-bell fs-5 text-secondary"></i>
+                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="notifBadge" style="display: none;">0</span>
+                        </button>
+                        <div class="dropdown-menu dropdown-menu-end shadow-lg border-0 p-0" style="width: 340px; border-radius: 14px; overflow: hidden;">
+                            <div class="p-3 bg-light border-bottom d-flex justify-content-between align-items-center">
+                                <h6 class="fw-bold mb-0">Notifications</h6>
+                                <small class="text-muted" id="notifCountText">0 unread</small>
+                            </div>
+                            <div class="list-group list-group-flush" id="notifList" style="max-height: 320px; overflow-y: auto;">
+                                <div class="p-3 text-center text-muted small">No notifications yet</div>
+                            </div>
                         </div>
                     </div>
+
+                    <!-- User Menu Dropdown -->
+                    <div class="dropdown" th:if="${currentUser}">
+                        <button class="btn p-0 d-flex align-items-center gap-2 border-0 bg-transparent" type="button" data-bs-toggle="dropdown">
+                            <div class="avatar-circle" th:text="${#strings.substring(currentUser.username, 0, 1).toUpperCase()}">U</div>
+                            <div class="d-none d-md-block text-start">
+                                <div class="fw-bold small mb-0" th:text="${currentUser.username}">user</div>
+                                <span class="badge bg-secondary-subtle text-secondary" style="font-size: 0.65rem;" th:text="${activeTeam != null ? myRoles[activeTeam.id] : 'MEMBER'}">ROLE</span>
+                            </div>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow border-0 mt-2 p-1" style="border-radius: 10px;">
+                            <li><a class="dropdown-item rounded-2 py-2" th:href="@{/profile}"><i class="bi bi-person me-2"></i> My Profile</a></li>
+                            <li><hr class="dropdown-divider my-1"></li>
+                            <li>
+                                <form th:action="@{/logout}" method="post" class="m-0">
+                                    <button type="submit" class="dropdown-item rounded-2 py-2 text-danger"><i class="bi bi-box-arrow-right me-2"></i> Logout</button>
+                                </form>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </header>
+
+            <main class="p-4 flex-grow-1">
+                <!-- Alerts -->
+                <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show rounded-3 mb-4 shadow-sm border-0" role="alert">
+                    <i class="bi bi-check-circle-fill me-2"></i><span th:text="${successMessage}"></span>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                <div th:if="${errorMessage}" class="alert alert-danger alert-dismissible fade show rounded-3 mb-4 shadow-sm border-0" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i><span th:text="${errorMessage}"></span>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                 </div>
 
-                <div class="d-flex align-items-center gap-2 bg-slate-800 px-3 py-1.5 rounded-pill bg-opacity-50 border border-secondary border-opacity-25" th:if="${currentUser}">
-                    <i class="bi bi-person-circle text-primary"></i>
-                    <span class="small fw-semibold" th:text="${currentUser.username}">user</span>
-                </div>
-                <form th:action="@{/logout}" method="post" class="d-inline mb-0">
-                    <button class="btn btn-outline-light btn-sm rounded-pill px-3" type="submit">
-                        <i class="bi bi-box-arrow-right me-1"></i> Logout
-                    </button>
-                </form>
-            </div>
-        </div>
-    </nav>
-
-    <div class="container pb-5">
-        <!-- Flash Alerts -->
-        <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show border-0 shadow-sm rounded-3 mb-4" role="alert">
-            <i class="bi bi-check-circle-fill me-2"></i> <span th:text="${successMessage}">Success</span>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-        <div th:if="${errorMessage}" class="alert alert-danger alert-dismissible fade show border-0 shadow-sm rounded-3 mb-4" role="alert">
-            <i class="bi bi-exclamation-triangle-fill me-2"></i> <span th:text="${errorMessage}">Error</span>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-
-        <div th:if="${createdInviteUrl}" class="alert alert-info border-0 shadow-sm rounded-3 mb-4" role="alert">
-            <h6 class="fw-bold mb-1"><i class="bi bi-link-45deg fs-5 me-1"></i> Team Invitation Link Generated!</h6>
-            <p class="small mb-2">Share this exact invitation link with the recipient to join team <strong th:text="${activeTeam != null ? activeTeam.name : ''}">Team</strong>:</p>
-            <div class="input-group">
-                <input type="text" class="form-control font-monospace bg-white" id="inviteUrlInput" th:value="${createdInviteUrl}" readonly>
-                <button class="btn btn-outline-secondary" type="button" onclick="navigator.clipboard.writeText(document.getElementById('inviteUrlInput').value); alert('Copied to clipboard!');">
-                    <i class="bi bi-clipboard me-1"></i> Copy
-                </button>
-            </div>
-        </div>
-
-        <div class="row g-4">
-            <!-- Left Sidebar: Teams Switcher -->
-            <div class="col-lg-4">
-                <div class="card card-custom p-4 mb-4">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h5 class="fw-bold mb-0"><i class="bi bi-building me-2 text-primary"></i> Your Teams</h5>
-                        <button type="button" class="btn btn-sm btn-primary-custom px-3" data-bs-toggle="modal" data-bs-target="#createTeamModal">
-                            <i class="bi bi-plus-lg me-1"></i> New
+                <div th:if="${createdInviteUrl}" class="alert alert-info border-0 shadow-sm rounded-3 mb-4" role="alert">
+                    <h6 class="fw-bold mb-1"><i class="bi bi-link-45deg fs-5 me-1"></i> Team Invitation Link Generated!</h6>
+                    <p class="small mb-2">Share this exact invitation link with the recipient to join team <strong th:text="${activeTeam != null ? activeTeam.name : ''}">Team</strong>:</p>
+                    <div class="input-group">
+                        <input type="text" class="form-control font-monospace bg-white rounded-start-3" id="inviteUrlInput" th:value="${createdInviteUrl}" readonly>
+                        <button class="btn btn-outline-secondary rounded-end-3" type="button" onclick="navigator.clipboard.writeText(document.getElementById('inviteUrlInput').value); alert('Copied to clipboard!');">
+                            <i class="bi bi-clipboard me-1"></i> Copy
                         </button>
                     </div>
+                </div>
 
-                    <div th:if="${#lists.isEmpty(myTeams)}" class="text-center py-4 text-muted">
-                        <i class="bi bi-people display-4 d-block text-secondary opacity-50 mb-2"></i>
-                        <p class="mb-0">You are not a member of any team yet.</p>
-                        <small class="text-muted">Create a team above or ask your owner for an invite.</small>
-                    </div>
-
-                    <div class="d-flex flex-column gap-2" th:if="${not #lists.isEmpty(myTeams)}">
-                        <a th:each="t : ${myTeams}"
-                           th:href="@{/teams(teamId=${t.id})}"
-                           class="card p-3 border team-pill"
-                           th:classappend="${activeTeam != null and activeTeam.id == t.id} ? 'active' : ''">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <div class="fw-bold" th:text="${t.name}">Team Name</div>
-                                    <small class="text-muted" th:text="${t.description != null ? t.description : 'No description'}">Desc</small>
-                                </div>
-                                <span class="role-chip"
-                                      th:classappend="${myRoles[t.id] == T(com.podcastrelease.model.TeamRole).OWNER ? 'role-chip-owner' : (myRoles[t.id] == T(com.podcastrelease.model.TeamRole).RELEASE_MANAGER ? 'role-chip-manager' : (myRoles[t.id] == T(com.podcastrelease.model.TeamRole).EDITOR ? 'role-chip-editor' : 'role-chip-creator'))}"
-                                      th:text="${myRoles[t.id]}">ROLE</span>
+                <!-- Page Header Card -->
+                <div class="card card-custom p-4 mb-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="bg-primary-subtle text-primary p-3 rounded-circle">
+                                <i class="bi bi-people-fill fs-3"></i>
                             </div>
-                        </a>
+                            <div>
+                                <h4 class="fw-bold mb-1">Teams & Member Collaboration</h4>
+                                <p class="text-muted small mb-0">Manage team workspaces, member roles, pending invitations, and activity audit trails.</p>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-primary rounded-pill px-4 fw-semibold" data-bs-toggle="modal" data-bs-target="#createTeamModal">
+                            <i class="bi bi-plus-lg me-1"></i> Create New Team
+                        </button>
                     </div>
                 </div>
-            </div>
 
-            <!-- Right Column: Active Team Details & Member List -->
-            <div class="col-lg-8">
+                <!-- Content Area -->
                 <div th:if="${activeTeam == null}" class="card card-custom p-5 text-center text-muted">
                     <i class="bi bi-people-fill display-3 mb-3 text-secondary opacity-50"></i>
-                    <h5 class="fw-bold">No Team Selected</h5>
-                    <p class="mb-0">Select a team from the left sidebar or create a new team to manage members and invitations.</p>
+                    <h5 class="fw-bold text-dark">No Team Selected</h5>
+                    <p class="mb-0">Select a team from the top-left sidebar dropdown or click "Create New Team" to get started.</p>
                 </div>
 
                 <div th:if="${activeTeam != null}">
-                    <!-- Team Header Card -->
+                    <!-- Active Team Banner Card -->
                     <div class="card card-custom p-4 mb-4">
-                        <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div class="d-flex justify-content-between align-items-start">
                             <div>
-                                <span class="badge bg-primary text-uppercase px-2.5 py-1 mb-2">Active Team</span>
-                                <h3 class="fw-extrabold text-dark mb-1" th:text="${activeTeam.name}">Team Name</h3>
+                                <div class="d-flex align-items-center gap-2 mb-2">
+                                    <span class="badge bg-primary text-uppercase px-2.5 py-1">Active Team</span>
+                                    <span class="role-chip"
+                                          th:classappend="${myRoles[activeTeam.id] == T(com.podcastrelease.model.TeamRole).OWNER ? 'role-chip-owner' : (myRoles[activeTeam.id] == T(com.podcastrelease.model.TeamRole).RELEASE_MANAGER ? 'role-chip-manager' : (myRoles[activeTeam.id] == T(com.podcastrelease.model.TeamRole).EDITOR ? 'role-chip-editor' : 'role-chip-creator'))}"
+                                          th:text="'YOUR ROLE: ' + ${myRoles[activeTeam.id]}">YOUR ROLE</span>
+                                </div>
+                                <h3 class="fw-bold text-dark mb-1" th:text="${activeTeam.name}">Team Name</h3>
                                 <p class="text-muted mb-0" th:text="${activeTeam.description != null ? activeTeam.description : 'No team description provided.'}">Description</p>
                             </div>
                             <div class="d-flex gap-2">
-                                <a th:href="@{/api/teams/{id}/reports/episodes.csv(id=${activeTeam.id})}" class="btn btn-outline-secondary btn-sm rounded-pill px-3 d-flex align-items-center gap-1">
+                                <a th:href="@{/api/teams/{id}/reports/episodes.csv(id=${activeTeam.id})}" class="btn btn-outline-secondary rounded-pill px-3 fw-semibold btn-sm d-flex align-items-center gap-1">
                                     <i class="bi bi-download"></i> Export CSV Report
                                 </a>
-                                <button type="button" class="btn btn-primary-custom px-3" data-bs-toggle="modal" data-bs-target="#inviteModal" th:if="${myRoles[activeTeam.id] == T(com.podcastrelease.model.TeamRole).OWNER}">
+                                <button type="button" class="btn btn-primary rounded-pill px-3 fw-semibold btn-sm" data-bs-toggle="modal" data-bs-target="#inviteModal" th:if="${myRoles[activeTeam.id] == T(com.podcastrelease.model.TeamRole).OWNER}">
                                     <i class="bi bi-person-plus-fill me-1"></i> Invite Member
                                 </button>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Members List Card -->
-                    <div class="card card-custom p-4 mb-4">
-                        <h5 class="fw-bold mb-3"><i class="bi bi-person-lines-fill me-2 text-primary"></i> Team Members (<span th:text="${#lists.size(members)}">0</span>)</h5>
+                    <!-- Team Members Card -->
+                    <div class="card card-custom overflow-hidden mb-4">
+                        <div class="p-4 border-bottom d-flex justify-content-between align-items-center">
+                            <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-person-lines-fill text-primary me-2"></i>Team Members (<span th:text="${#lists.size(members)}">0</span>)</h5>
+                        </div>
                         <div class="table-responsive">
                             <table class="table table-hover align-middle mb-0">
-                                <thead class="table-light">
+                                <thead class="table-light text-secondary text-uppercase small" style="font-size: 0.75rem; letter-spacing: 0.05em;">
                                     <tr>
-                                        <th>User</th>
-                                        <th>Role</th>
-                                        <th>Self-Review Policy</th>
+                                        <th class="ps-4">User</th>
+                                        <th>Assigned Role</th>
+                                        <th class="pe-4 text-end">Self-Review Policy</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <tr th:each="m : ${members}">
-                                        <td>
+                                        <td class="ps-4">
                                             <div class="d-flex align-items-center gap-2">
                                                 <div class="avatar-circle" th:text="${#strings.substring(m.user.username, 0, 1).toUpperCase()}">U</div>
                                                 <div>
-                                                    <div class="fw-bold" th:text="${m.user.username}">username</div>
+                                                    <div class="fw-bold text-dark" th:text="${m.user.username}">username</div>
                                                     <small class="text-muted" th:text="${m.user.email}">user@email.com</small>
                                                 </div>
                                             </div>
@@ -198,9 +252,9 @@
                                                 <span th:text="${m.role}">ROLE</span>
                                             </span>
                                         </td>
-                                        <td>
-                                            <span th:if="${m.allowSelfReview}" class="badge bg-success-subtle text-success border border-success-subtle rounded-pill">Allowed</span>
-                                            <span th:unless="${m.allowSelfReview}" class="badge bg-secondary-subtle text-secondary border border-secondary-subtle rounded-pill">Disabled</span>
+                                        <td class="pe-4 text-end">
+                                            <span th:if="${m.allowSelfReview}" class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1.5">Allowed</span>
+                                            <span th:unless="${m.allowSelfReview}" class="badge bg-secondary-subtle text-secondary border border-secondary-subtle rounded-pill px-3 py-1.5">Disabled</span>
                                         </td>
                                     </tr>
                                 </tbody>
@@ -208,37 +262,39 @@
                         </div>
                     </div>
 
-                    <!-- Pending Invites Card -->
-                    <div class="card card-custom p-4 mb-4" th:if="${myRoles[activeTeam.id] == T(com.podcastrelease.model.TeamRole).OWNER}">
-                        <h5 class="fw-bold mb-3"><i class="bi bi-envelope-paper me-2 text-primary"></i> Pending Invitations (<span th:text="${#lists.size(pendingInvites)}">0</span>)</h5>
-                        <div th:if="${#lists.isEmpty(pendingInvites)}" class="text-muted small py-2">No pending invitations for this team.</div>
+                    <!-- Pending Invites Card (Owner only) -->
+                    <div class="card card-custom overflow-hidden mb-4" th:if="${myRoles[activeTeam.id] == T(com.podcastrelease.model.TeamRole).OWNER}">
+                        <div class="p-4 border-bottom d-flex justify-content-between align-items-center">
+                            <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-envelope-paper text-primary me-2"></i>Pending Invitations (<span th:text="${#lists.size(pendingInvites)}">0</span>)</h5>
+                        </div>
+                        <div th:if="${#lists.isEmpty(pendingInvites)}" class="p-4 text-muted small">No pending invitations for this team.</div>
                         <div class="table-responsive" th:if="${not #lists.isEmpty(pendingInvites)}">
                             <table class="table table-hover align-middle mb-0">
-                                <thead class="table-light">
+                                <thead class="table-light text-secondary text-uppercase small" style="font-size: 0.75rem; letter-spacing: 0.05em;">
                                     <tr>
-                                        <th>Invited Email</th>
+                                        <th class="ps-4">Invited Email</th>
                                         <th>Assigned Role</th>
                                         <th>Status & Expiry</th>
-                                        <th class="text-end">Actions</th>
+                                        <th class="pe-4 text-end">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <tr th:each="inv : ${pendingInvites}">
-                                        <td class="fw-semibold" th:text="${inv.email}">email@example.com</td>
+                                        <td class="ps-4 fw-semibold text-dark" th:text="${inv.email}">email@example.com</td>
                                         <td>
                                             <span class="role-chip role-chip-creator" th:text="${inv.role}">ROLE</span>
                                         </td>
                                         <td>
-                                            <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill">Pending</span>
+                                            <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-3 py-1">Pending</span>
                                             <small class="text-muted ms-1" th:text="'Expires: ' + ${#temporals.format(inv.expiresAt, 'MMM dd, yyyy')}">Expires</small>
                                         </td>
-                                        <td class="text-end">
+                                        <td class="pe-4 text-end">
                                             <div class="d-inline-flex gap-2">
-                                                <a th:href="@{/invites/{token}/accept(token=${inv.token})}" class="btn btn-sm btn-outline-primary font-monospace" target="_blank" title="Copy / Open Invite Link">
+                                                <a th:href="@{/invites/{token}/accept(token=${inv.token})}" class="btn btn-sm btn-outline-primary rounded-pill px-3 font-monospace" target="_blank" title="Copy / Open Invite Link">
                                                     <i class="bi bi-box-arrow-up-right me-1"></i> Accept Link
                                                 </a>
                                                 <form th:action="@{/invites/{token}/decline(token=${inv.token})}" method="post" class="d-inline mb-0">
-                                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Revoke & Decline Invite">
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-3" title="Revoke & Decline Invite">
                                                         <i class="bi bi-x-circle me-1"></i> Decline
                                                     </button>
                                                 </form>
@@ -251,62 +307,62 @@
                     </div>
 
                     <!-- Team Audit Log Trail Card -->
-                    <div class="card card-custom p-4">
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <h5 class="fw-bold mb-0"><i class="bi bi-journal-text me-2 text-primary"></i> Team Audit Log</h5>
-                            <span class="badge bg-secondary-subtle text-secondary rounded-pill" th:text="${#lists.size(auditLogs)} + ' entries'">0 entries</span>
+                    <div class="card card-custom overflow-hidden">
+                        <div class="p-4 border-bottom d-flex justify-content-between align-items-center">
+                            <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-journal-text text-primary me-2"></i>Team Audit Log</h5>
+                            <span class="badge bg-secondary-subtle text-secondary rounded-pill px-3 py-1" th:text="${#lists.size(auditLogs)} + ' entries'">0 entries</span>
                         </div>
-                        <div th:if="${#lists.isEmpty(auditLogs)}" class="text-muted small py-2">No audit log records recorded for this team yet.</div>
+                        <div th:if="${#lists.isEmpty(auditLogs)}" class="p-4 text-muted small">No audit log records recorded for this team yet.</div>
                         <div class="table-responsive" th:if="${not #lists.isEmpty(auditLogs)}">
                             <table class="table table-sm table-hover align-middle mb-0 small">
-                                <thead class="table-light">
+                                <thead class="table-light text-secondary text-uppercase" style="font-size: 0.75rem; letter-spacing: 0.05em;">
                                     <tr>
-                                        <th>Timestamp</th>
+                                        <th class="ps-4">Timestamp</th>
                                         <th>Action</th>
                                         <th>Performed By</th>
-                                        <th>Episode ID</th>
+                                        <th class="pe-4 text-end">Episode ID</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <tr th:each="log : ${auditLogs}">
-                                        <td class="font-monospace text-muted" th:text="${#temporals.format(log.timestamp, 'yyyy-MM-dd HH:mm:ss')}">2026-09-26</td>
+                                        <td class="ps-4 font-monospace text-muted" th:text="${#temporals.format(log.timestamp, 'yyyy-MM-dd HH:mm:ss')}">2026-09-26</td>
                                         <td class="fw-semibold text-dark" th:text="${log.action}">Action</td>
                                         <td>
-                                            <span class="badge bg-light text-dark border" th:text="${log.performedBy != null ? log.performedBy.username : 'System'}">User</span>
+                                            <span class="badge bg-light text-dark border rounded-pill px-2.5 py-1" th:text="${log.performedBy != null ? log.performedBy.username : 'System'}">User</span>
                                         </td>
-                                        <td class="font-monospace text-secondary" th:text="${log.episodeId != null ? '#' + log.episodeId : '-'}">-</td>
+                                        <td class="pe-4 text-end font-monospace text-secondary" th:text="${log.episodeId != null ? '#' + log.episodeId : '-'}">-</td>
                                     </tr>
                                 </tbody>
                             </table>
                         </div>
                     </div>
                 </div>
-            </div>
+            </main>
         </div>
     </div>
 
     <!-- Create Team Modal -->
     <div class="modal fade" id="createTeamModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content border-0 shadow">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
                 <form th:action="@{/teams/create}" method="post">
-                    <div class="modal-header">
-                        <h5 class="modal-title fw-bold"><i class="bi bi-building-add me-2 text-primary"></i> Create New Team</h5>
+                    <div class="modal-header border-bottom">
+                        <h5 class="modal-title fw-bold text-dark"><i class="bi bi-building-add text-primary me-2"></i>Create New Team</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
-                    <div class="modal-body">
+                    <div class="modal-body p-4">
                         <div class="mb-3">
-                            <label class="form-label fw-semibold">Team Name</label>
-                            <input type="text" name="name" class="form-control" placeholder="e.g. Daily Tech Podcast Team" required>
+                            <label class="form-label fw-semibold text-dark small">Team Name *</label>
+                            <input type="text" name="name" class="form-control rounded-3" placeholder="e.g. Daily Tech Podcast Team" required>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label fw-semibold">Description</label>
-                            <textarea name="description" class="form-control" rows="3" placeholder="Brief summary of the team's show or scope"></textarea>
+                            <label class="form-label fw-semibold text-dark small">Description</label>
+                            <textarea name="description" class="form-control rounded-3" rows="3" placeholder="Brief summary of the team's show or scope"></textarea>
                         </div>
                     </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-primary-custom px-4">Create Team</button>
+                    <div class="modal-footer border-top p-3">
+                        <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary rounded-pill px-4 fw-semibold">Create Team</button>
                     </div>
                 </form>
             </div>
@@ -315,21 +371,21 @@
 
     <!-- Invite Member Modal -->
     <div class="modal fade" id="inviteModal" tabindex="-1" th:if="${activeTeam != null}">
-        <div class="modal-dialog">
-            <div class="modal-content border-0 shadow">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
                 <form th:action="@{/teams/{id}/invite(id=${activeTeam.id})}" method="post">
-                    <div class="modal-header">
-                        <h5 class="modal-title fw-bold"><i class="bi bi-person-plus me-2 text-primary"></i> Invite Team Member</h5>
+                    <div class="modal-header border-bottom">
+                        <h5 class="modal-title fw-bold text-dark"><i class="bi bi-person-plus text-primary me-2"></i>Invite Team Member</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
-                    <div class="modal-body">
+                    <div class="modal-body p-4">
                         <div class="mb-3">
-                            <label class="form-label fw-semibold">Recipient Email Address</label>
-                            <input type="email" name="email" class="form-control" placeholder="colleague@example.com" required>
+                            <label class="form-label fw-semibold text-dark small">Recipient Email Address *</label>
+                            <input type="email" name="email" class="form-control rounded-3" placeholder="colleague@example.com" required>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label fw-semibold">Assigned Team Role</label>
-                            <select name="role" class="form-select" required>
+                            <label class="form-label fw-semibold text-dark small">Assigned Team Role *</label>
+                            <select name="role" class="form-select rounded-3" required>
                                 <option value="CREATOR">Creator — Draft & edit own episodes</option>
                                 <option value="EDITOR">Editor — Claim & edit episodes across team</option>
                                 <option value="RELEASE_MANAGER">Release Manager — Approve, publish & schedule</option>
@@ -341,9 +397,9 @@
                             <small class="text-muted d-block">Invitations expire automatically after 7 days. If the invited user already has an account, an in-app notification will be delivered instantly.</small>
                         </div>
                     </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-primary-custom px-4">Send Invitation</button>
+                    <div class="modal-footer border-top p-3">
+                        <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary rounded-pill px-4 fw-semibold">Send Invitation</button>
                     </div>
                 </form>
             </div>
