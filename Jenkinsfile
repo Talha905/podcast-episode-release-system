@@ -67,14 +67,19 @@ pipeline {
 
     post {
         always {
-            echo 'Archiving build artifact...'
-            archiveArtifacts artifacts: 'target/*.war', allowEmptyArchive: false
+            echo 'Publishing test execution reports to Jenkins...'
+            junit testResults: 'target/surefire-reports/*.xml', allowEmptyResults: true
+
+            echo 'Archiving failure screenshots and DOM dumps if present...'
+            archiveArtifacts artifacts: 'target/selenium-screenshots/**', allowEmptyArchive: true
         }
         success {
+            echo 'Archiving packaged application WAR artifact...'
+            archiveArtifacts artifacts: 'target/*.war', allowEmptyArchive: false
             echo 'Pipeline execution and Tomcat deployment stage completed successfully!'
         }
         failure {
-            echo 'Pipeline build or deployment failed.'
+            echo 'Pipeline build, test quality gate, or deployment failed. Deployment aborted.'
         }
     }
 }
