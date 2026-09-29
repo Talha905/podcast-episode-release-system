@@ -1,0 +1,12 @@
+---
+# Handlers for podcast_release role
+
+- name: Reload systemd daemon
+  ansible.builtin.systemd:
+    daemon_reload: yes
+
+- name: Restart podcast-release service
+  ansible.builtin.systemd:
+    name: "{{ service_name }}"
+    state: restarted
+    enabled: yes

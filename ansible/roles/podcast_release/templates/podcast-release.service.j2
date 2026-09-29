@@ -1,0 +1,27 @@
+[Unit]
+Description=Podcast Episode Release System Daemon
+After=network.target docker.service
+Wants=docker.service
+
+[Service]
+Type=simple
+User={{ app_user }}
+Group={{ app_group }}
+WorkingDirectory={{ app_root_dir }}
+Environment=SERVER_PORT={{ app_port }}
+Environment=SPRING_PROFILES_ACTIVE={{ active_profile }}
+Environment=JAVA_OPTS="-Djava.awt.headless=true -Xms{{ java_min_memory }} -Xmx{{ java_max_memory }} -XX:+UseG1GC"
+
+# ExecStart command running either the packaged application or managed container
+ExecStart=/usr/bin/java $JAVA_OPTS -jar {{ app_root_dir }}/podcast-release.war --server.port={{ app_port }}
+
+# Process resilience & restart policy
+Restart=always
+RestartSec=10
+StandardOutput=append:{{ app_logs_dir }}/app.log
+StandardError=append:{{ app_logs_dir }}/error.log
+SuccessExitStatus=143
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

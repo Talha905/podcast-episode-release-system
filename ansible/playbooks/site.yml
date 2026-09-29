@@ -1,0 +1,7 @@
+---
+# Master Orchestration Playbook for Podcast Episode Release System
+- name: Configure and Provision Podcast Release System Target Nodes
+  hosts: app_servers
+  become: yes
+  roles:
+    - podcast_release

@@ -4,6 +4,9 @@ pipeline {
     parameters {
         string(name: 'SERVER_PORT', defaultValue: '8005', description: 'Target application server port')
         choice(name: 'ENVIRONMENT', choices: ['dev', 'prod'], description: 'Target deployment environment profile')
+        choice(name: 'DEPLOY_TARGET', choices: ['Both', 'Docker', 'Tomcat'], description: 'Target deployment runtime')
+        string(name: 'DOCKER_IMAGE_NAME', defaultValue: 'podcast-episode-release-system', description: 'Docker image repository name')
+        string(name: 'DOCKER_CONTAINER_NAME', defaultValue: 'podcast-release-system', description: 'Docker running container name')
         string(name: 'TOMCAT_WEBAPPS_DIR', defaultValue: 'C:\\Users\\thele\\Downloads\\apache-tomcat-11.0.25\\apache-tomcat-11.0.25\\webapps', description: 'Path to target Tomcat webapps directory')
     }
 
@@ -42,6 +45,9 @@ pipeline {
         }
 
         stage('Deploy to Tomcat') {
+            when {
+                expression { params.DEPLOY_TARGET == 'Tomcat' || params.DEPLOY_TARGET == 'Both' }
+            }
             steps {
                 script {
                     def tomcatDir = (params.TOMCAT_WEBAPPS_DIR && params.TOMCAT_WEBAPPS_DIR.trim()) ? params.TOMCAT_WEBAPPS_DIR.trim() : 'C:\\Users\\thele\\Downloads\\apache-tomcat-11.0.25\\apache-tomcat-11.0.25\\webapps'
@@ -63,6 +69,56 @@ pipeline {
                 }
             }
         }
+
+        stage('Build & Tag Docker Image') {
+            when {
+                expression { params.DEPLOY_TARGET == 'Docker' || params.DEPLOY_TARGET == 'Both' }
+            }
+            steps {
+                script {
+                    def imageName = params.DOCKER_IMAGE_NAME
+                    def tagVersion = "${imageName}:${BUILD_NUMBER}"
+                    def tagLatest = "${imageName}:latest"
+                    echo "Building Docker image version: ${tagVersion} and ${tagLatest}..."
+                    if (isUnix()) {
+                        sh "docker build -t ${tagVersion} -t ${tagLatest} ."
+                    } else {
+                        bat "docker build -t ${tagVersion} -t ${tagLatest} ."
+                    }
+                }
+            }
+        }
+
+        stage('Deploy Docker Container') {
+            when {
+                expression { params.DEPLOY_TARGET == 'Docker' || params.DEPLOY_TARGET == 'Both' }
+            }
+            steps {
+                script {
+                    def containerName = params.DOCKER_CONTAINER_NAME
+                    def imageName = "${params.DOCKER_IMAGE_NAME}:${BUILD_NUMBER}"
+                    def port = params.SERVER_PORT
+                    echo "Deploying fresh Docker container: ${containerName} using image ${imageName} on port ${port}..."
+                    if (isUnix()) {
+                        sh """
+                            docker stop ${containerName} || true
+                            docker rm ${containerName} || true
+                            docker run -d --name ${containerName} -p ${port}:8080 --restart unless-stopped -v podcast-release-uploads:/opt/podcast-release/uploads ${imageName}
+                            sleep 3
+                            docker ps --filter name=${containerName}
+                        """
+                    } else {
+                        bat """
+                            docker stop ${containerName} 2>nul || ver >nul
+                            docker rm ${containerName} 2>nul || ver >nul
+                            docker run -d --name ${containerName} -p ${port}:8080 --restart unless-stopped -v podcast-release-uploads:/opt/podcast-release/uploads ${imageName}
+                            timeout /t 3 /nobreak >nul
+                            docker ps --filter name=${containerName}
+                        """
+                    }
+                }
+            }
+        }
     }
 
     post {
@@ -76,7 +132,7 @@ pipeline {
         success {
             echo 'Archiving packaged application WAR artifact...'
             archiveArtifacts artifacts: 'target/*.war', allowEmptyArchive: false
-            echo 'Pipeline execution and Tomcat deployment stage completed successfully!'
+            echo 'Pipeline execution and continuous deployment stages completed successfully!'
         }
         failure {
             echo 'Pipeline build, test quality gate, or deployment failed. Deployment aborted.'

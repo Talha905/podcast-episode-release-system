@@ -1,0 +1,85 @@
+---
+# ==============================================================================
+# Tasks for podcast_release role: Server Prerequisites & Configuration
+# ==============================================================================
+
+- name: 1. Update APT package cache
+  ansible.builtin.apt:
+    update_cache: yes
+    cache_valid_time: 3600
+  when: ansible_os_family == "Debian"
+
+- name: 2. Install all required system prerequisite packages
+  ansible.builtin.package:
+    name: "{{ required_packages }}"
+    state: present
+
+- name: 3. Ensure dedicated application group exists
+  ansible.builtin.group:
+    name: "{{ app_group }}"
+    state: present
+    system: yes
+
+- name: 4. Ensure dedicated non-root application user exists
+  ansible.builtin.user:
+    name: "{{ app_user }}"
+    group: "{{ app_group }}"
+    shell: "{{ app_user_shell }}"
+    home: "{{ app_root_dir }}"
+    create_home: no
+    system: yes
+    state: present
+
+- name: 5. Create application folder hierarchy
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: '0755'
+  loop:
+    - "{{ app_root_dir }}"
+    - "{{ app_uploads_dir }}"
+    - "{{ app_logs_dir }}"
+    - "{{ app_config_dir }}"
+
+- name: 6. Configure UFW firewall rule for Application Port (8005)
+  community.general.ufw:
+    rule: allow
+    port: "{{ app_port | string }}"
+    proto: tcp
+    comment: "Podcast Episode Release System Web Application"
+  when: ansible_os_family == "Debian"
+
+- name: 7. Configure UFW firewall rule for Jenkins CI/CD Port (8080)
+  community.general.ufw:
+    rule: allow
+    port: "{{ jenkins_port | string }}"
+    proto: tcp
+    comment: "Jenkins CI/CD Automation Port"
+  when: ansible_os_family == "Debian"
+
+- name: 8. Configure UFW firewall rule for SSH Administration (22)
+  community.general.ufw:
+    rule: allow
+    port: "{{ ssh_port | string }}"
+    proto: tcp
+    comment: "SSH Remote Administration"
+  when: ansible_os_family == "Debian"
+
+- name: 9. Deploy Systemd service unit template
+  ansible.builtin.template:
+    src: podcast-release.service.j2
+    dest: /etc/systemd/system/{{ service_name }}.service
+    owner: root
+    group: root
+    mode: '0644'
+  notify:
+    - Reload systemd daemon
+    - Restart podcast-release service
+
+- name: 10. Ensure podcast-release service is enabled and started
+  ansible.builtin.systemd:
+    name: "{{ service_name }}"
+    enabled: yes
+    state: started

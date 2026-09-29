@@ -1,0 +1,58 @@
+---
+# ==============================================================================
+# Week 14: Automated Provisioning, Idempotency & Health Check Playbook
+# ==============================================================================
+- name: 1. Provision Target Node with Server Prerequisites and Application
+  hosts: app_servers
+  become: yes
+  roles:
+    - podcast_release
+
+- name: 2. Deploy Application Artifact and Execute Health Validation
+  hosts: app_servers
+  become: yes
+  vars:
+    app_port: 8005
+    health_url: "http://localhost:{{ app_port }}/login"
+    backup_file: "/opt/podcast-release/podcast-release.war.backup"
+    current_file: "/opt/podcast-release/podcast-release.war"
+
+  tasks:
+    - name: Ensure previous stable release backup is preserved
+      ansible.builtin.copy:
+        src: "{{ current_file }}"
+        dest: "{{ backup_file }}"
+        remote_src: yes
+      ignore_errors: yes
+
+    - name: Deploy latest application artifact
+      ansible.builtin.copy:
+        src: "../../target/podcast-release.war"
+        dest: "{{ current_file }}"
+        owner: "{{ app_user | default('podcast') }}"
+        group: "{{ app_group | default('podcast') }}"
+        mode: '0644'
+      notify:
+        - Restart podcast-release service
+      ignore_errors: yes
+
+    - name: Flush handlers to ensure service is running latest release
+      ansible.builtin.meta: flush_handlers
+
+    - name: 3. Automated Health Check Probe (Wait for application readiness)
+      ansible.builtin.uri:
+        url: "{{ health_url }}"
+        method: GET
+        status_code: 200
+        timeout: 10
+      register: health_result
+      until: health_result.status == 200
+      retries: 12
+      delay: 5
+
+    - name: 4. Assert Health Probe Passed
+      ansible.builtin.assert:
+        that:
+          - health_result.status == 200
+        fail_msg: "Health check probe failed on {{ health_url }}"
+        success_msg: "Health check probe successfully verified on {{ health_url }} (Status: 200 OK)"
