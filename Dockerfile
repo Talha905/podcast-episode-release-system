@@ -20,8 +20,8 @@ LABEL maintainer="Talha Patrawala <producer@podcastrelease.com>" \
       version="1.0.0" \
       description="Jenkins-Based Podcast Episode Release System - Production Docker Container"
 
-# Create non-root system user for security compliance
-RUN groupadd -r appgroup && useradd -r -g appgroup -s /sbin/nologin appuser
+# Create non-root system user with home directory for security compliance
+RUN groupadd -r appgroup && useradd -r -m -d /home/appuser -g appgroup appuser
 
 # Remove default Tomcat webapps for cleaner attack surface
 RUN rm -rf /usr/local/tomcat/webapps/*
@@ -29,13 +29,14 @@ RUN rm -rf /usr/local/tomcat/webapps/*
 # Copy built WAR as ROOT.war so application serves from root path (/)
 COPY --from=builder /app/target/podcast-release.war /usr/local/tomcat/webapps/ROOT.war
 
-# Create necessary persistent upload and log directories
-RUN mkdir -p /opt/podcast-release/uploads /opt/podcast-release/logs && \
-    chown -R appuser:appgroup /usr/local/tomcat /opt/podcast-release
+# Create necessary persistent upload, log, and data directories
+RUN mkdir -p /opt/podcast-release/uploads /opt/podcast-release/logs /opt/podcast-release/data && \
+    chown -R appuser:appgroup /usr/local/tomcat /opt/podcast-release /home/appuser
 
 # Set environment variables
 ENV SERVER_PORT=8080 \
-    SPRING_PROFILES_ACTIVE=prod \
+    SPRING_PROFILES_ACTIVE=dev \
+    SPRING_DATASOURCE_URL="jdbc:h2:file:/opt/podcast-release/data/podcastdb;AUTO_SERVER=TRUE;DB_CLOSE_DELAY=-1" \
     JAVA_OPTS="-Djava.awt.headless=true -Xms256m -Xmx512m -XX:+UseG1GC"
 
 # Switch to non-root user
